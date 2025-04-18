@@ -1,5 +1,4 @@
 // src/app/page.tsx
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -13,18 +12,29 @@ interface Lead {
   nombre?: string;
   canal?: string;
   telefono?: string;
-  industria?: string;
   estado?: string;
   usuario_instagram?: string;
   personalidad?: string;
   facturacion?: string;
   tamaño_negocio?: string;
   dolor_principal?: string;
+  industria?: string;
   origen?: string;
   referido_id?: string;
   notas?: string;
   tipo_cliente?: 'A' | 'B' | 'C';
   intervencion_humana?: boolean;
+}
+
+interface Config {
+  segundos_rpta_ia: number;
+}
+
+interface Conversacion {
+  mensaje_in: string;
+  mensaje_out?: string;
+  timestamp_in: string;
+  timestamp_out?: string;
 }
 
 const supabase = createClient(
@@ -36,17 +46,44 @@ export default function CRMApp() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [config, setConfig] = useState<Config | null>(null);
+  const [conversaciones, setConversaciones] = useState<Conversacion[]>([]);
+  const [mensajeEditado, setMensajeEditado] = useState('');
 
   useEffect(() => {
     const fetchLeads = async () => {
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .order('fecha_creacion', { ascending: false });
-      if (!error && data) setLeads(data as Lead[]);
+      const { data } = await supabase.from('leads').select('*').order('fecha_creacion', { ascending: false });
+      if (data) setLeads(data);
+    };
+    const fetchConfig = async () => {
+      const { data } = await supabase.from('configuracion').select('*').single();
+      if (data) setConfig(data);
     };
     fetchLeads();
+    fetchConfig();
   }, []);
+
+  useEffect(() => {
+    const fetchConversaciones = async () => {
+      if (!selectedLead) return;
+      const { data } = await supabase
+        .from('conversaciones')
+        .select('*')
+        .eq('lead_id', selectedLead.id)
+        .order('timestamp_in', { ascending: true });
+      if (data) setConversaciones(data);
+    };
+    fetchConversaciones();
+  }, [selectedLead]);
+
+  const getCountdown = (inTime: string) => {
+    if (!config) return '';
+    const entrada = new Date(inTime).getTime();
+    const previsto = entrada + config.segundos_rpta_ia * 1000;
+    const ahora = Date.now();
+    const diff = Math.floor((previsto - ahora) / 1000);
+    return diff > 0 ? `⏳ Se enviará en ${diff}s` : '';
+  };
 
   const getChannelIcon = (canal: string | undefined) => {
     if (!canal) return null;
@@ -62,12 +99,6 @@ export default function CRMApp() {
     return 'bg-gray-700';
   };
 
-  const handleToggleIntervencion = async (checked: boolean) => {
-    if (!selectedLead) return;
-    await supabase.from('leads').update({ intervencion_humana: checked }).eq('id', selectedLead.id);
-    setSelectedLead({ ...selectedLead, intervencion_humana: checked });
-  };
-
   return (
     <div className="grid grid-cols-12 gap-6 px-6 py-8 bg-gray-950 min-h-screen text-white font-sans">
       {/* Sidebar - Leads */}
@@ -80,7 +111,7 @@ export default function CRMApp() {
             </div>
           </div>
           <TabsContent value="kanban">
-            {leads.map((lead: Lead) => (
+            {leads.map((lead) => (
               <Card
                 key={lead.id}
                 onClick={() => {
@@ -109,33 +140,72 @@ export default function CRMApp() {
       </div>
 
       {/* Detalle Lead */}
-      <div className="col-span-6">
+      <div className="col-span-9">
         {selectedLead && !isEditing ? (
           <Card className="bg-gray-900 border border-gray-700 rounded-xl shadow-md">
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">{selectedLead?.nombre || 'Lead seleccionado'}</h2>
-              <p className="mb-2">📱 <strong>Canal:</strong> {selectedLead?.canal}</p>
-              <p className="mb-2">📞 <strong>Teléfono:</strong> {selectedLead?.telefono}</p>
-              <p className="mb-2">🏢 <strong>Industria:</strong> {selectedLead?.industria || 'No especificada'}</p>
-              <p className="mb-2">🧠 <strong>Personalidad:</strong> {selectedLead?.personalidad || 'Sin definir'}</p>
-              <p className="mb-2">💸 <strong>Facturación:</strong> {selectedLead?.facturacion || 'No especificada'}</p>
-              <p className="mb-2">👥 <strong>Tamaño del Negocio:</strong> {selectedLead?.tamaño_negocio || 'No especificado'}</p>
-              <p className="mb-2">🔥 <strong>Dolor Principal:</strong> {selectedLead?.dolor_principal || 'No especificado'}</p>
-              <p className="mb-2">📍 <strong>Origen:</strong> {selectedLead?.origen || 'Sin origen'}</p>
-              <p className="mb-2">🧾 <strong>Notas:</strong> {selectedLead?.notas || 'Sin notas'}</p>
-              <p className="mb-2">🧩 <strong>Tipo Cliente:</strong> <span className={`px-2 py-1 rounded ${getColorClass(selectedLead?.tipo_cliente)}`}>{selectedLead?.tipo_cliente || 'No asignado'}</span></p>
-              <p className="mb-6">📌 <strong>Estado:</strong> {selectedLead?.estado || 'Sin estado'}</p>
+            <div className="p-6 space-y-4">
+              <h2 className="text-2xl font-bold">{selectedLead.nombre || 'Lead seleccionado'}</h2>
+              <p>📱 <strong>Canal:</strong> {selectedLead.canal}</p>
+              <p>📞 <strong>Teléfono:</strong> {selectedLead.telefono}</p>
+              <p>🏢 <strong>Industria:</strong> {selectedLead.industria || 'No especificada'}</p>
+              <p>🧠 <strong>Personalidad:</strong> {selectedLead.personalidad || 'Sin definir'}</p>
+              <p>💸 <strong>Facturación:</strong> {selectedLead.facturacion || 'No especificada'}</p>
+              <p>👥 <strong>Tamaño del Negocio:</strong> {selectedLead.tamaño_negocio || 'No especificado'}</p>
+              <p>🔥 <strong>Dolor Principal:</strong> {selectedLead.dolor_principal || 'No especificado'}</p>
+              <p>📍 <strong>Origen:</strong> {selectedLead.origen || 'Sin origen'}</p>
+              <p>🧾 <strong>Notas:</strong> {selectedLead.notas || 'Sin notas'}</p>
+              <p>🧩 <strong>Tipo Cliente:</strong> <span className={`px-2 py-1 rounded ${getColorClass(selectedLead?.tipo_cliente)}`}>{selectedLead.tipo_cliente || 'No asignado'}</span></p>
+              <p>📌 <strong>Estado:</strong> {selectedLead.estado || 'Sin estado'}</p>
 
-              <label className="flex items-center mb-6 gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={selectedLead?.intervencion_humana || false}
-                  onChange={(e) => handleToggleIntervencion(e.target.checked)}
-                />
-                Tomar conversación manualmente
-              </label>
+              <hr className="border-gray-700 my-4" />
+
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">💬 Conversación</h3>
+                {conversaciones.map((msg, i) => (
+                  <div key={i} className="bg-gray-800 p-2 rounded-lg text-sm space-y-1">
+                    <p><strong>Cliente:</strong> {msg.mensaje_in}</p>
+                    {msg.mensaje_out && (
+                      <p className="text-green-400">
+                        <strong>Bot:</strong> {msg.mensaje_out}
+                        <span className="ml-2 text-xs text-gray-400">{getCountdown(msg.timestamp_in)}</span>
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
 
               <Button onClick={() => setIsEditing(true)} className="bg-blue-600 hover:bg-blue-500 text-white">Editar Lead</Button>
+            </div>
+          </Card>
+        ) : selectedLead && isEditing ? (
+          <Card className="bg-gray-900 border border-gray-700 rounded-xl shadow-md">
+            <div className="p-6 space-y-4">
+              {[
+                'nombre', 'telefono', 'industria', 'personalidad', 'facturacion', 'tamaño_negocio',
+                'dolor_principal', 'origen', 'estado', 'notas'
+              ].map((field) => (
+                <input
+                  key={field}
+                  type="text"
+                  defaultValue={(selectedLead as any)[field] || ''}
+                  placeholder={field.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())}
+                  className="w-full p-2 rounded bg-gray-800 text-white"
+                />
+              ))}
+              <div className="flex gap-2">
+                {['A', 'B', 'C'].map((tipo) => (
+                  <button
+                    key={tipo}
+                    className={`px-3 py-1 rounded ${getColorClass(tipo)} ${selectedLead.tipo_cliente === tipo ? 'ring-2 ring-white' : ''}`}
+                  >
+                    {tipo}
+                  </button>
+                ))}
+              </div>
+              <Button onClick={() => setIsEditing(false)} className="bg-green-600 hover:bg-green-500">Guardar</Button>
+              <Button className="bg-transparent text-white hover:bg-gray-700" onClick={() => setIsEditing(false)}>
+                Cancelar
+              </Button>
             </div>
           </Card>
         ) : (
@@ -145,21 +215,6 @@ export default function CRMApp() {
             </div>
           </Card>
         )}
-      </div>
-
-      {/* Chatwoot embebido */}
-      <div className="col-span-3">
-        <Card className="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
-          <div className="p-0">
-            <iframe
-              src="https://app.chatwoot.com/app/accounts/1/inbox"
-              width="100%"
-              height="600px"
-              frameBorder="0"
-              className="rounded-b-xl w-full"
-            />
-          </div>
-        </Card>
       </div>
     </div>
   );
