@@ -4,9 +4,9 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Card, CardContent } from '/workspaces/crm-bealfa/src/app/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '/workspaces/crm-bealfa/src/app/components/ui/tabs';
-import { Button } from '/workspaces/crm-bealfa/src/app/components/ui/button';
+import { Card, CardContent } from '../../components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
+import { Button } from '../../components/ui/button';
 
 interface Lead {
   id: string;
