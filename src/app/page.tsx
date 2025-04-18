@@ -38,34 +38,38 @@ export default function CRMApp() {
   }, []);
 
   return (
-    <div className="grid grid-cols-12 gap-4 p-4">
+    <div className="grid grid-cols-12 gap-6 px-6 py-8 bg-neutral-900 min-h-screen text-white">
       {/* Sidebar - Leads */}
       <div className="col-span-3">
         <Tabs defaultValue="kanban">
-          <TabsList>
-            <TabsTrigger value="kanban">Kanban</TabsTrigger>
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          </TabsList>
+          <div className="flex gap-2 mb-4">
+            <TabsList>
+              <TabsTrigger value="kanban">Kanban</TabsTrigger>
+              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            </TabsList>
+          </div>
           <TabsContent value="kanban">
             {leads.map((lead: Lead) => (
               <Card
                 key={lead.id}
                 onClick={() => setSelectedLead(lead)}
-                className="cursor-pointer hover:bg-gray-100 mb-2"
+                className="cursor-pointer hover:bg-neutral-800 mb-2 shadow-md p-2 border border-gray-700"
               >
                 <CardContent>
-                  <p className="font-bold">{lead.nombre || 'Sin nombre'}</p>
-                  <p className="text-xs text-muted">{lead.estado || 'Nuevo'}</p>
+                  <p className="font-semibold text-lg">{lead.nombre || 'Sin nombre'}</p>
+                  <p className="text-sm text-gray-400">{lead.estado || 'Nuevo'}</p>
                 </CardContent>
               </Card>
             ))}
           </TabsContent>
           <TabsContent value="dashboard">
-            <Card>
-              <CardContent>
-                <p>Métricas del CRM (Próximamente)</p>
-              </CardContent>
-            </Card>
+            <div className="shadow-md bg-neutral-800 border border-gray-700 rounded-xl">
+              <Card>
+                <CardContent>
+                  <p className="text-gray-400">📊 Métricas del CRM (Próximamente)</p>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
@@ -73,20 +77,20 @@ export default function CRMApp() {
       {/* Detalle Lead */}
       <div className="col-span-6">
         {selectedLead ? (
-          <Card>
+          <Card className="shadow-md bg-neutral-800 border border-gray-700">
             <CardContent>
-              <h2 className="text-xl font-bold mb-2">{selectedLead?.nombre || 'Lead seleccionado'}</h2>
-              <p>Canal: {selectedLead?.canal}</p>
-              <p>Teléfono: {selectedLead?.telefono}</p>
-              <p>Industria: {selectedLead?.industria || 'No especificada'}</p>
-              <p>Estado: {selectedLead?.estado}</p>
-              <Button className="mt-4">Editar Lead</Button>
+              <h2 className="text-2xl font-bold mb-4">{selectedLead?.nombre || 'Lead seleccionado'}</h2>
+              <p className="mb-1">📱 <strong>Canal:</strong> {selectedLead?.canal}</p>
+              <p className="mb-1">📞 <strong>Teléfono:</strong> {selectedLead?.telefono}</p>
+              <p className="mb-1">🏢 <strong>Industria:</strong> {selectedLead?.industria || 'No especificada'}</p>
+              <p className="mb-4">📌 <strong>Estado:</strong> {selectedLead?.estado}</p>
+              <Button className="bg-blue-600 hover:bg-blue-500 text-white">Editar Lead</Button>
             </CardContent>
           </Card>
         ) : (
-          <Card>
+          <Card className="shadow-md bg-neutral-800 border border-gray-700">
             <CardContent>
-              <p>Seleccioná un lead para ver detalles.</p>
+              <p className="text-gray-400">Seleccioná un lead para ver detalles.</p>
             </CardContent>
           </Card>
         )}
@@ -99,7 +103,7 @@ export default function CRMApp() {
           width="100%"
           height="800px"
           frameBorder="0"
-          className="rounded-xl shadow-lg"
+          className="rounded-xl shadow-xl border border-gray-700"
         />
       </div>
     </div>
