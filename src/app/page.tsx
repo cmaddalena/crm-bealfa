@@ -38,38 +38,36 @@ export default function CRMApp() {
   }, []);
 
   return (
-    <div className="grid grid-cols-12 gap-6 px-6 py-8 bg-neutral-900 min-h-screen text-white">
+    <div className="grid grid-cols-12 gap-6 px-6 py-8 bg-gray-950 min-h-screen text-white font-sans">
       {/* Sidebar - Leads */}
       <div className="col-span-3">
         <Tabs defaultValue="kanban">
           <div className="flex gap-2 mb-4">
-            <TabsList>
-              <TabsTrigger value="kanban">Kanban</TabsTrigger>
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            </TabsList>
+            <div className="w-full justify-between bg-gray-800 p-1 rounded-xl flex">
+              <TabsTrigger value="kanban" className="w-full">Kanban</TabsTrigger>
+              <TabsTrigger value="dashboard" className="w-full">Dashboard</TabsTrigger>
+            </div>
           </div>
           <TabsContent value="kanban">
             {leads.map((lead: Lead) => (
               <Card
                 key={lead.id}
                 onClick={() => setSelectedLead(lead)}
-                className="cursor-pointer hover:bg-neutral-800 mb-2 shadow-md p-2 border border-gray-700"
+                className="cursor-pointer hover:bg-gray-800 mb-2 transition-colors duration-150 border border-gray-700 rounded-xl shadow-sm"
               >
-                <CardContent>
-                  <p className="font-semibold text-lg">{lead.nombre || 'Sin nombre'}</p>
+                <div className="p-4">
+                  <p className="font-semibold text-base">{lead.nombre || 'Sin nombre'}</p>
                   <p className="text-sm text-gray-400">{lead.estado || 'Nuevo'}</p>
-                </CardContent>
+                </div>
               </Card>
             ))}
           </TabsContent>
           <TabsContent value="dashboard">
-            <div className="shadow-md bg-neutral-800 border border-gray-700 rounded-xl">
-              <Card>
-                <CardContent>
-                  <p className="text-gray-400">📊 Métricas del CRM (Próximamente)</p>
-                </CardContent>
-              </Card>
-            </div>
+            <Card className="bg-gray-900 border border-gray-700 rounded-xl">
+              <div className="p-6">
+                <p className="text-gray-400">📊 Métricas del CRM (Próximamente)</p>
+              </div>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
@@ -77,34 +75,38 @@ export default function CRMApp() {
       {/* Detalle Lead */}
       <div className="col-span-6">
         {selectedLead ? (
-          <Card className="shadow-md bg-neutral-800 border border-gray-700">
-            <CardContent>
+          <Card className="bg-gray-900 border border-gray-700 rounded-xl shadow-md">
+            <div className="p-6">
               <h2 className="text-2xl font-bold mb-4">{selectedLead?.nombre || 'Lead seleccionado'}</h2>
-              <p className="mb-1">📱 <strong>Canal:</strong> {selectedLead?.canal}</p>
-              <p className="mb-1">📞 <strong>Teléfono:</strong> {selectedLead?.telefono}</p>
-              <p className="mb-1">🏢 <strong>Industria:</strong> {selectedLead?.industria || 'No especificada'}</p>
-              <p className="mb-4">📌 <strong>Estado:</strong> {selectedLead?.estado}</p>
+              <p className="mb-2">📱 <strong>Canal:</strong> {selectedLead?.canal}</p>
+              <p className="mb-2">📞 <strong>Teléfono:</strong> {selectedLead?.telefono}</p>
+              <p className="mb-2">🏢 <strong>Industria:</strong> {selectedLead?.industria || 'No especificada'}</p>
+              <p className="mb-6">📌 <strong>Estado:</strong> {selectedLead?.estado || 'Sin estado'}</p>
               <Button className="bg-blue-600 hover:bg-blue-500 text-white">Editar Lead</Button>
-            </CardContent>
+            </div>
           </Card>
         ) : (
-          <Card className="shadow-md bg-neutral-800 border border-gray-700">
-            <CardContent>
-              <p className="text-gray-400">Seleccioná un lead para ver detalles.</p>
-            </CardContent>
+          <Card className="bg-gray-900 border border-gray-700 rounded-xl shadow-md">
+            <div className="p-6 text-gray-400 text-center">
+              <p className="text-lg">👈 Seleccioná un lead desde la izquierda para ver detalles.</p>
+            </div>
           </Card>
         )}
       </div>
 
       {/* Chatwoot embebido */}
       <div className="col-span-3">
-        <iframe
-          src="https://tu-chatwoot.com/app/accounts/1/inbox"
-          width="100%"
-          height="800px"
-          frameBorder="0"
-          className="rounded-xl shadow-xl border border-gray-700"
-        />
+        <Card className="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
+          <div className="p-0">
+            <iframe
+              src="https://tu-chatwoot.com/app/accounts/1/inbox"
+              width="100%"
+              height="600px"
+              frameBorder="0"
+              className="rounded-b-xl w-full"
+            />
+          </div>
+        </Card>
       </div>
     </div>
   );
