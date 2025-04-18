@@ -1,4 +1,4 @@
-// Estructura base del CRM UI con integración de Chatwoot y conexión a Supabase
+// src/app/page.tsx
 
 'use client';
 
@@ -24,6 +24,7 @@ interface Lead {
   referido_id?: string;
   notas?: string;
   tipo_cliente?: 'A' | 'B' | 'C';
+  intervencion_humana?: boolean;
 }
 
 const supabase = createClient(
@@ -59,6 +60,12 @@ export default function CRMApp() {
     if (tipo === 'B') return 'bg-yellow-500';
     if (tipo === 'C') return 'bg-red-600';
     return 'bg-gray-700';
+  };
+
+  const handleToggleIntervencion = async (checked: boolean) => {
+    if (!selectedLead) return;
+    await supabase.from('leads').update({ intervencion_humana: checked }).eq('id', selectedLead.id);
+    setSelectedLead({ ...selectedLead, intervencion_humana: checked });
   };
 
   return (
@@ -118,39 +125,17 @@ export default function CRMApp() {
               <p className="mb-2">🧾 <strong>Notas:</strong> {selectedLead?.notas || 'Sin notas'}</p>
               <p className="mb-2">🧩 <strong>Tipo Cliente:</strong> <span className={`px-2 py-1 rounded ${getColorClass(selectedLead?.tipo_cliente)}`}>{selectedLead?.tipo_cliente || 'No asignado'}</span></p>
               <p className="mb-6">📌 <strong>Estado:</strong> {selectedLead?.estado || 'Sin estado'}</p>
-              <Button onClick={() => setIsEditing(true)} className="bg-blue-600 hover:bg-blue-500 text-white">Editar Lead</Button>
-            </div>
-          </Card>
-        ) : selectedLead && isEditing ? (
-          <Card className="bg-gray-900 border border-gray-700 rounded-xl shadow-md">
-            <div className="p-6 space-y-4">
-              {[ 
-                'nombre', 'telefono', 'industria', 'personalidad', 'facturacion', 'tamaño_negocio',
-                'dolor_principal', 'origen', 'estado', 'notas'
-              ].map((field) => (
+
+              <label className="flex items-center mb-6 gap-2 text-sm">
                 <input
-                  key={field}
-                  type="text"
-                  defaultValue={(selectedLead as any)[field] || ''}
-                  placeholder={field.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())}
-                  className="w-full p-2 rounded bg-gray-800 text-white"
+                  type="checkbox"
+                  checked={selectedLead?.intervencion_humana || false}
+                  onChange={(e) => handleToggleIntervencion(e.target.checked)}
                 />
-              ))}
-              <div className="flex gap-2">
-                {['A', 'B', 'C'].map((tipo) => (
-                  <button
-                    key={tipo}
-                    data-tipo={tipo}
-                    className={`px-3 py-1 rounded ${getColorClass(tipo)} ${selectedLead.tipo_cliente === tipo ? 'ring-2 ring-white' : ''}`}
-                  >
-                    {tipo}
-                  </button>
-                ))}
-              </div>
-              <Button onClick={() => setIsEditing(false)} className="bg-green-600 hover:bg-green-500">Guardar</Button>
-              <button onClick={() => setIsEditing(false)} className="text-white px-4 py-2 rounded bg-gray-600 hover:bg-gray-500">
-              Cancelar
-            </button>
+                Tomar conversación manualmente
+              </label>
+
+              <Button onClick={() => setIsEditing(true)} className="bg-blue-600 hover:bg-blue-500 text-white">Editar Lead</Button>
             </div>
           </Card>
         ) : (
@@ -167,7 +152,7 @@ export default function CRMApp() {
         <Card className="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
           <div className="p-0">
             <iframe
-              src="https://tu-chatwoot.com/app/accounts/1/inbox"
+              src="https://app.chatwoot.com/app/accounts/1/inbox"
               width="100%"
               height="600px"
               frameBorder="0"
