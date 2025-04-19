@@ -12,27 +12,36 @@ const supabase = createClient(
 
 export default function CRMApp() {
   const [leads, setLeads] = useState<any[]>([]);
-  const [estadosCRM, setEstadosCRM] = useState<string[]>([]);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [formData, setFormData] = useState<any>({});
   const [conversacion, setConversacion] = useState<any[]>([]);
+  const [estados, setEstados] = useState<string[]>([]);
+  const [colores, setColores] = useState<any>({});
+  const [formState, setFormState] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    const fetchConfigAndLeads = async () => {
-      const { data: config } = await supabase.from('config').select('estados_crm').single();
-      const estados = config?.estados_crm?.split(',') || ['Nuevo'];
-      setEstadosCRM(estados);
-
+    const fetchData = async () => {
       const { data: leadsData } = await supabase.from('leads').select('*');
+      const { data: estadosData } = await supabase.from('estados_crm').select('nombre_estado');
+      const { data: config } = await supabase.from('config').select('*').single();
+
       setLeads(leadsData || []);
+      setEstados(estadosData?.map(e => e.nombre_estado) || []);
+      setColores({
+        fondo: config?.color_fondo || '#0f172a',
+        texto: config?.color_texto || '#ffffff',
+        botones: config?.color_botones || '#3b82f6',
+        acento: config?.color_ascento || '#9333ea',
+      });
     };
 
-    fetchConfigAndLeads();
+    fetchData();
   }, []);
 
   const handleSelectLead = async (lead: any) => {
     setSelectedLead(lead);
     setFormData(lead);
+
     const { data } = await supabase
       .from('conversaciones')
       .select('*')
@@ -46,14 +55,7 @@ export default function CRMApp() {
   };
 
   const handleGuardar = async () => {
-    await supabase
-      .from('leads')
-      .update({
-        ...formData,
-        fecha_update: new Date().toISOString(),
-        usuario_update: 'CRM',
-      })
-      .eq('id', formData.id);
+    await supabase.from('leads').update(formData).eq('id', formData.id);
     setSelectedLead(null);
   };
 
@@ -66,88 +68,93 @@ export default function CRMApp() {
   };
 
   const camposExcluidos = ['id', 'fecha_creacion', 'usuario_update', 'fecha_update'];
-  const editableFields = Object.keys(formData || {}).filter((key) => !camposExcluidos.includes(key));
+  const editableFields = Object.keys(selectedLead || {}).filter(
+    (key) => !camposExcluidos.includes(key)
+  );
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white font-sans">
-      <h1 className="text-2xl font-bold p-6">📋 CRM Kanban</h1>
-      <div className="grid grid-cols-5 gap-4 px-6">
-        {estadosCRM.map((estado) => (
-          <div key={estado} className="bg-gray-900 p-4 rounded-lg shadow-md border border-gray-800">
-            <h2 className="text-lg font-semibold mb-3">{estado}</h2>
-            {leads
-              .filter((lead) => (lead.estado || 'Nuevo') === estado)
-              .map((lead) => (
+    <div style={{ backgroundColor: colores.fondo }} className="min-h-screen p-6 text-white">
+      <header className="flex justify-between items-center mb-6">
+        <img src="/logo.png" alt="Logo" className="h-10 cursor-pointer" />
+        <h1 style={{ color: colores.acento }} className="text-2xl font-bold">CRM BEALFA</h1>
+      </header>
+
+      {!selectedLead ? (
+        <div className="grid grid-cols-4 gap-4">
+          {estados.map((estado) => (
+            <div key={estado} className="bg-gray-800 p-4 rounded-lg shadow-md">
+              <h2 className="text-lg font-semibold mb-2">{estado}</h2>
+              {leads.filter((lead) => lead.estado === estado).map((lead) => (
                 <Card
                   key={lead.id}
                   onClick={() => handleSelectLead(lead)}
-                  className="mb-3 p-3 bg-gray-800 hover:bg-gray-700 cursor-pointer rounded"
+                  className="mb-2 p-3 bg-gray-700 rounded cursor-pointer hover:bg-gray-600"
                 >
-                  <p className="font-semibold">{lead.nombre || 'Sin nombre'}</p>
-                  <p className="text-sm text-gray-400">{lead.canal}</p>
+                  <p className="font-bold">{lead.nombre || 'Sin nombre'}</p>
+                  <p className="text-sm">{lead.telefono || 'Sin teléfono'}</p>
                 </Card>
               ))}
-          </div>
-        ))}
-      </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-6">
+          {/* Panel izquierdo - Datos */}
+          <div className="col-span-1 bg-gray-900 p-4 rounded-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold">{selectedLead.nombre}</h3>
+              <button onClick={() => setSelectedLead(null)} className="text-red-400">Cerrar ✖️</button>
+            </div>
 
-      {/* Modal de Detalle del Lead */}
-      {selectedLead && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-xl shadow-xl w-[90vw] h-[90vh] p-6 grid grid-cols-12 gap-4">
-            {/* Panel Izquierdo: Datos */}
-            <div className="col-span-4 overflow-auto border-r border-gray-700 pr-4">
-              <div className="flex justify-between mb-4">
-                <h2 className="text-xl font-bold">{formData.nombre}</h2>
-                <button onClick={() => setSelectedLead(null)}>❌</button>
-              </div>
-              {editableFields.map((key) => (
-                <div key={key} className="mb-3">
-                  <label className="text-sm text-gray-400 capitalize">{key}</label>
+            {editableFields.map((key) => (
+              <div key={key} className="mb-2 flex items-center justify-between">
+                <label className="capitalize text-sm w-1/2 text-gray-400">{key.replace(/_/g, ' ')}</label>
+                {key === 'intervencion_humana' ? (
+                  <input type="checkbox" checked={formData[key] || false} onChange={(e) => handleChange(key, e.target.checked)} />
+                ) : (
                   <input
                     type="text"
-                    value={formData[key] ?? ''}
+                    value={formData[key] || ''}
                     onChange={(e) => handleChange(key, e.target.value)}
-                    placeholder={key}
-                    className="w-full p-2 rounded bg-gray-800 text-white"
+                    className="p-1 bg-gray-800 rounded w-1/2"
                   />
-                </div>
-              ))}
-              <Button onClick={handleGuardar} className="w-full bg-green-600 mt-2">
-                Guardar
-              </Button>
-              {!selectedLead.intervencion_humana && (
-                <Button onClick={handleTomarConversacion} className="w-full mt-2 bg-blue-600">
-                  Tomar conversación
-                </Button>
-              )}
-            </div>
-
-            {/* Panel Derecho: Conversación */}
-            <div className="col-span-8 flex flex-col">
-              <h3 className="text-lg font-semibold mb-3">💬 Conversación</h3>
-              <div className="overflow-y-auto space-y-2 pr-3">
-                {conversacion.length === 0 ? (
-                  <p className="text-gray-500">Sin mensajes aún...</p>
-                ) : (
-                  conversacion.map((msg, i) => (
-                    <div
-                      key={i}
-                      className={`p-3 rounded-lg w-fit max-w-[75%] ${
-                        msg.tipo === 'entrada'
-                          ? 'bg-gray-800 self-start'
-                          : 'bg-green-700 self-end ml-auto'
-                      }`}
-                    >
-                      <p>{msg.mensaje}</p>
-                      <p className="text-xs text-gray-300 mt-1 text-right">
-                        {new Date(msg.timestamp_in || msg.timestamp_out).toLocaleString()}
-                      </p>
-                    </div>
-                  ))
                 )}
               </div>
+            ))}
+
+            <Button className="mt-4 w-full bg-green-600 rounded-full" onClick={handleGuardar}>Guardar</Button>
+            {!selectedLead.intervencion_humana && (
+              <Button className="mt-2 w-full bg-blue-600 rounded-full" onClick={handleTomarConversacion}>
+                Tomar conversación
+              </Button>
+            )}
+          </div>
+
+          {/* Panel derecho - Conversación */}
+          <div className="col-span-2 bg-gray-900 p-4 rounded-lg flex flex-col">
+            <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {conversacion.map((msg, index) => (
+                <div
+                  key={index}
+                  className={`max-w-[70%] p-3 rounded-xl ${
+                    msg.tipo === 'entrada' ? 'bg-gray-800 text-left' : 'bg-green-600 ml-auto text-right'
+                  }`}
+                >
+                  <p>{msg.mensaje}</p>
+                  <p className="text-xs mt-1 text-gray-300">{new Date(msg.timestamp_in || msg.timestamp_out).toLocaleTimeString()}</p>
+                </div>
+              ))}
             </div>
+            {selectedLead.intervencion_humana && (
+              <div className="mt-4">
+                <textarea
+                  placeholder="Escribí una respuesta..."
+                  className="w-full p-2 bg-gray-800 rounded resize-none"
+                />
+                <Button className="mt-2 bg-blue-600 w-full rounded-full">Enviar</Button>
+              </div>
+            )}
           </div>
         </div>
       )}
