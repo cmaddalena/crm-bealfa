@@ -16,16 +16,21 @@ export default function CRMApp() {
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [formData, setFormData] = useState<any>({});
   const [conversacion, setConversacion] = useState<any[]>([]);
+  const [nuevoMensaje, setNuevoMensaje] = useState('');
 
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: estadosData } = await supabase.from('estados_crm').select('nombre_estado');
-      setEstados(estadosData?.map((e) => e.nombre_estado) || []);
-
-      const { data: leadsData } = await supabase.from('leads').select('*');
-      setLeads(leadsData || []);
+    const fetchEstados = async () => {
+      const { data } = await supabase.from('estados_crm').select('nombre_estado');
+      setEstados(data?.map((e) => e.nombre_estado) || []);
     };
-    fetchData();
+
+    const fetchLeads = async () => {
+      const { data } = await supabase.from('leads').select('*');
+      setLeads(data || []);
+    };
+
+    fetchEstados();
+    fetchLeads();
   }, []);
 
   const handleSelectLead = async (lead: any) => {
@@ -44,10 +49,8 @@ export default function CRMApp() {
   };
 
   const handleGuardar = async () => {
-    await supabase
-      .from('leads')
-      .update({ ...formData, fecha_update: new Date().toISOString(), usuario_update: 'CRM' })
-      .eq('id', formData.id);
+    await supabase.from('leads').update(formData).eq('id', formData.id);
+    setLeads((prev) => prev.map((l) => (l.id === formData.id ? formData : l)));
     setSelectedLead(null);
   };
 
@@ -56,36 +59,53 @@ export default function CRMApp() {
       .from('leads')
       .update({ intervencion_humana: true })
       .eq('id', formData.id);
+    setFormData({ ...formData, intervencion_humana: true });
     setSelectedLead({ ...formData, intervencion_humana: true });
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('text/plain', id);
+  };
+
+  const handleDrop = async (e: React.DragEvent, estado: string) => {
+    const id = e.dataTransfer.getData('text/plain');
+    await supabase.from('leads').update({ estado }).eq('id', id);
+    const { data } = await supabase.from('leads').select('*');
+    setLeads(data || []);
+  };
+
+  const handleSendMessage = async () => {
+    if (!nuevoMensaje.trim()) return;
+
+    await supabase.from('conversaciones').insert({
+      lead_id: formData.id,
+      mensaje: nuevoMensaje,
+      tipo: 'salida',
+      timestamp_out: new Date().toISOString(),
+    });
+
+    setConversacion((prev) => [
+      ...prev,
+      {
+        mensaje: nuevoMensaje,
+        tipo: 'salida',
+        timestamp_out: new Date().toISOString(),
+      },
+    ]);
+
+    setNuevoMensaje('');
   };
 
   const camposExcluidos = ['id', 'fecha_creacion', 'usuario_update', 'fecha_update'];
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white font-sans">
-      {!selectedLead ? (
-        <div className="p-6 grid grid-cols-4 gap-4">
-          {[...estados, 'Sin estado'].map((estado) => (
-            <div key={estado}>
-              <h3 className="text-lg font-bold mb-2">{estado}</h3>
-              {leads.filter((l) => l.estado === estado || (!l.estado && estado === 'Sin estado')).map((lead) => (
-                <Card
-                  key={lead.id}
-                  onClick={() => handleSelectLead(lead)}
-                  className="mb-2 p-4 cursor-pointer bg-gray-800 hover:bg-gray-700 transition rounded-xl"
-                >
-                  <p className="font-semibold">{lead.nombre || 'Sin nombre'}</p>
-                  <p className="text-sm text-gray-400">{lead.estado || 'Nuevo'}</p>
-                </Card>
-              ))}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-12 h-screen overflow-hidden">
-          <div className="col-span-4 bg-gray-900 p-4 overflow-auto border-r border-gray-800">
+    <div className="min-h-screen bg-gray-950 text-white font-sans p-4">
+      {selectedLead ? (
+        <div className="grid grid-cols-12 gap-4">
+          {/* Datos del lead */}
+          <div className="col-span-4 bg-gray-900 p-4 rounded-xl">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">{selectedLead?.nombre}</h3>
+              <h3 className="text-xl font-bold">{formData.nombre || 'Lead'}</h3>
               <button
                 className="text-red-500 hover:text-red-400"
                 onClick={() => setSelectedLead(null)}
@@ -93,78 +113,117 @@ export default function CRMApp() {
                 ❌
               </button>
             </div>
-            {Object.entries(formData).map(([key, value]) => {
-              if (!camposExcluidos.includes(key)) {
-                return (
-                  <div key={key} className="flex items-center justify-between mb-3">
-                    <label className="text-sm text-gray-400 capitalize mr-2 w-1/3">{key}</label>
+
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(formData)
+                .filter(([key]) => !camposExcluidos.includes(key))
+                .map(([key, value]) => (
+                  <div key={key} className="col-span-2">
+                    <label className="text-sm text-gray-400 capitalize">{key}</label>
                     {key === 'intervencion_humana' ? (
                       <input
                         type="checkbox"
-                        checked={!!formData[key]}
-                        onChange={(e) => handleChange(key, e.target.checked)}
-                        className="w-5 h-5"
+                        checked={value === true}
+                        onChange={(e) =>
+                          handleChange(key, e.target.checked)
+                        }
+                        className="ml-2"
                       />
                     ) : (
                       <input
                         type="text"
-                        value={formData[key] ?? ''}
+                        value={String(value ?? '')}
                         onChange={(e) => handleChange(key, e.target.value)}
-                        className="w-2/3 p-2 rounded bg-gray-800 text-white"
+                        placeholder={key}
+                        className="w-full p-2 rounded bg-gray-800 text-white"
                       />
                     )}
                   </div>
-                );
-              }
-              return null;
-            })}
-            <Button onClick={handleGuardar} className="w-full bg-green-600 mt-2 rounded-full">
+                ))}
+            </div>
+
+            <Button onClick={handleGuardar} className="w-full mt-4 bg-green-600 rounded-full">
               Guardar
             </Button>
-            {!selectedLead.intervencion_humana && (
+
+            {!formData.intervencion_humana && (
               <Button onClick={handleTomarConversacion} className="w-full mt-2 bg-blue-600 rounded-full">
                 Tomar conversación
               </Button>
             )}
           </div>
 
-          <div className="col-span-8 bg-gray-950 p-4 overflow-auto">
+          {/* Conversación */}
+          <div className="col-span-8 flex flex-col bg-gray-900 p-4 rounded-xl">
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
             <div className="space-y-2 max-h-[calc(100vh-160px)] overflow-y-auto pr-4 mb-4">
-              {conversacion.length === 0 && (
+              {conversacion.length === 0 ? (
                 <p className="text-gray-500">Sin mensajes aún...</p>
+              ) : (
+                conversacion.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`p-3 rounded-lg w-fit max-w-[80%] ${
+                      msg.tipo === 'entrada'
+                        ? 'bg-gray-800 self-start'
+                        : 'bg-green-700 self-end ml-auto'
+                    }`}
+                  >
+                    <p>{msg.mensaje}</p>
+                    <p className="text-xs text-gray-300 mt-1 text-right">
+                      {new Date(msg.timestamp_in || msg.timestamp_out).toLocaleString()}
+                    </p>
+                  </div>
+                ))
               )}
-              {conversacion.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`p-3 rounded-lg w-fit max-w-[80%] ${
-                    msg.tipo === 'entrada'
-                      ? 'bg-gray-800 self-start'
-                      : 'bg-green-700 self-end ml-auto'
-                  }`}
-                >
-                  <p>{msg.mensaje}</p>
-                  <p className="text-xs text-gray-300 mt-1 text-right">
-                    {new Date(msg.timestamp_in || msg.timestamp_out).toLocaleString()}
-                  </p>
-                </div>
-              ))}
             </div>
-            {selectedLead?.intervencion_humana && (
-              <div className="flex gap-2">
+
+            {formData.intervencion_humana && (
+              <div className="flex gap-2 items-center">
                 <input
                   type="text"
-                  placeholder="Escribí tu respuesta..."
-                  className="flex-1 p-2 rounded bg-gray-800 text-white"
+                  placeholder="Escribí tu mensaje..."
+                  className="flex-1 p-2 rounded-full bg-gray-800 text-white"
+                  value={nuevoMensaje}
+                  onChange={(e) => setNuevoMensaje(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                 />
-                <Button className="rounded-full bg-blue-600">Enviar</Button>
+                <Button onClick={handleSendMessage} className="bg-blue-600 rounded-full">
+                  Enviar
+                </Button>
               </div>
             )}
           </div>
+        </div>
+      ) : (
+        // Kanban de estados
+        <div className="grid grid-cols-6 gap-4">
+          {[...estados, 'Sin estado'].map((estado) => (
+            <div
+              key={estado}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => handleDrop(e, estado)}
+              className="bg-gray-900 rounded-xl p-4 min-h-[300px]"
+            >
+              <h3 className="text-lg font-bold mb-2">{estado}</h3>
+              {leads
+                .filter((lead) => lead.estado === estado || (!lead.estado && estado === 'Sin estado'))
+                .map((lead) => (
+                  <Card
+                    key={lead.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, lead.id)}
+                    onClick={() => handleSelectLead(lead)}
+                    className="mb-2 p-3 bg-gray-800 cursor-pointer hover:bg-gray-700 transition rounded-lg"
+                  >
+                    <p className="font-semibold">{lead.nombre || 'Sin nombre'}</p>
+                    <p className="text-sm text-gray-400">{lead.estado || 'Nuevo'}</p>
+                  </Card>
+                ))}
+            </div>
+          ))}
         </div>
       )}
     </div>
   );
 }
-
-
