@@ -63,22 +63,6 @@ export default function CRMApp() {
     setSelectedLead(null);
   };
 
-  const handleSendMessage = async () => {
-    if (!nuevoMensaje.trim()) return;
-
-    const mensaje = {
-      lead_id: formData.id,
-      mensaje_out: nuevoMensaje,
-      tipo: 'salida',
-      autor: 'humano',
-      timestamp_out: new Date().toISOString(),
-    };
-
-    await supabase.from('conversaciones').insert(mensaje);
-    setConversacion((prev) => [...prev, mensaje]);
-    setNuevoMensaje('');
-  };
-
   const handleDrop = async (e: React.DragEvent, estado: string) => {
     const id = e.dataTransfer.getData('text/plain');
     await supabase.from('leads').update({ estado }).eq('id', id);
@@ -88,6 +72,30 @@ export default function CRMApp() {
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     e.dataTransfer.setData('text/plain', id);
+  };
+
+  const handleSendMessage = async () => {
+    if (!nuevoMensaje.trim()) return;
+
+    await supabase.from('conversaciones').insert({
+      lead_id: formData.id,
+      mensaje_out: nuevoMensaje,
+      tipo: 'salida',
+      autor: 'humano',
+      timestamp_out: new Date().toISOString(),
+    });
+
+    setConversacion((prev) => [
+      ...prev,
+      {
+        mensaje_out: nuevoMensaje,
+        tipo: 'salida',
+        autor: 'humano',
+        timestamp_out: new Date().toISOString(),
+      },
+    ]);
+
+    setNuevoMensaje('');
   };
 
   const camposExcluidos = ['id', 'fecha_creacion', 'usuario_update', 'fecha_update'];
@@ -145,33 +153,47 @@ export default function CRMApp() {
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
             <div className="flex-1 overflow-y-auto space-y-2 pr-2">
               {conversacion.map((msg, i) => {
-                const isEntrada = msg.mensaje_in;
-                const isBot = msg.autor === 'bot';
-                const isHumano = msg.autor === 'humano';
-
+                const items = [];
                 if (msg.mensaje_in) {
-                  return (
-                    <div key={`${i}-in`} className="p-3 bg-green-700 rounded-lg w-fit max-w-[80%] self-start">
-                      <p>{msg.mensaje_in}</p>
-                      <p className="text-xs text-gray-300 mt-1 text-right">{new Date(msg.timestamp_in).toLocaleString()}</p>
-                    </div>
-                  );
+                  items.push({
+                    texto: msg.mensaje_in,
+                    tipo: 'entrada',
+                    fecha: msg.timestamp_in,
+                  });
                 }
-
                 if (msg.mensaje_out) {
-                  const bgColor = isBot ? 'bg-gray-600' : 'bg-blue-600';
-                  return (
-                    <div key={`${i}-out`} className={`p-3 ${bgColor} rounded-lg w-fit max-w-[80%] self-end ml-auto`}>
-                      <p>{msg.mensaje_out}</p>
-                      <p className="text-xs text-gray-300 mt-1 text-right">{new Date(msg.timestamp_out || msg.timestamp_in).toLocaleString()}</p>
-                    </div>
-                  );
+                  items.push({
+                    texto: msg.mensaje_out,
+                    tipo: msg.autor === 'humano' ? 'humano' : 'bot',
+                    fecha: msg.timestamp_out,
+                  });
                 }
 
-                return null;
+                return items.map((item, j) => {
+                  const color =
+                    item.tipo === 'entrada' ? 'bg-green-700' :
+                    item.tipo === 'humano' ? 'bg-blue-600' :
+                    'bg-gray-600';
+
+                  const alignment =
+                    item.tipo === 'entrada' ? 'self-start' : 'self-end ml-auto';
+
+                  return (
+                    <div
+                      key={`${i}-${j}`}
+                      className={`p-3 rounded-lg w-fit max-w-[80%] ${color} ${alignment}`}
+                    >
+                      <p>{item.texto}</p>
+                      <p className="text-xs text-gray-300 mt-1 text-right">
+                        {new Date(item.fecha).toLocaleString()}
+                      </p>
+                    </div>
+                  );
+                });
               })}
               <div ref={chatEndRef} />
             </div>
+
             {formData.intervencion_humana && (
               <div className="flex gap-2 mt-4 items-center">
                 <input
@@ -211,7 +233,9 @@ export default function CRMApp() {
                   >
                     <div className="flex justify-between items-center">
                       <p className="font-semibold">{lead.nombre || 'Sin nombre'}</p>
-                      <span className={`text-xs text-white px-2 py-1 rounded-full ${canalColor(lead.canal || '')}`}>
+                      <span
+                        className={`text-xs text-white px-2 py-1 rounded-full ${canalColor(lead.canal || '')}`}
+                      >
                         {lead.canal}
                       </span>
                     </div>
