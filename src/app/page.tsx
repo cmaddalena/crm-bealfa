@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -45,10 +44,11 @@ export default function CRMApp() {
     setConversacion(data || []);
   };
 
-  const handleChange = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
+  const handleChange = async (field: string, value: any) => {
+    const updated = { ...formData, [field]: value };
+    setFormData(updated);
     if (field === 'intervencion_humana') {
-      supabase.from('leads').update({ intervencion_humana: value }).eq('id', formData.id);
+      await supabase.from('leads').update({ [field]: value }).eq('id', formData.id);
     }
   };
 
@@ -58,25 +58,44 @@ export default function CRMApp() {
     setSelectedLead(null);
   };
 
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('text/plain', id);
+  };
+
+  const handleDrop = async (e: React.DragEvent, estado: string) => {
+    const id = e.dataTransfer.getData('text/plain');
+    await supabase.from('leads').update({ estado }).eq('id', id);
+    const { data } = await supabase.from('leads').select('*');
+    setLeads(data || []);
+  };
+
   const handleSendMessage = async () => {
     if (!nuevoMensaje.trim()) return;
 
     await supabase.from('conversaciones').insert({
       lead_id: formData.id,
-      mensaje_out: nuevoMensaje,
+      mensaje: nuevoMensaje,
+      tipo: 'salida',
       timestamp_out: new Date().toISOString(),
     });
 
     setConversacion((prev) => [
       ...prev,
       {
-        mensaje_out: nuevoMensaje,
+        mensaje: nuevoMensaje,
         tipo: 'salida',
         timestamp_out: new Date().toISOString(),
       },
     ]);
 
     setNuevoMensaje('');
+  };
+
+  const getCanalColor = (canal: string) => {
+    if (!canal) return 'bg-gray-500';
+    if (canal.toLowerCase() === 'whatsapp') return 'bg-green-600';
+    if (canal.toLowerCase() === 'instagram') return 'bg-pink-500';
+    return 'bg-blue-500';
   };
 
   const camposExcluidos = ['id', 'fecha_creacion', 'usuario_update', 'fecha_update'];
@@ -86,7 +105,7 @@ export default function CRMApp() {
       {selectedLead ? (
         <div className="grid grid-cols-12 gap-4">
           {/* Datos del lead */}
-          <div className="col-span-4 bg-gray-900 p-4 rounded-xl overflow-y-auto max-h-screen">
+          <div className="col-span-4 bg-gray-900 p-4 rounded-xl">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">{formData.nombre || 'Lead'}</h3>
               <button
@@ -101,8 +120,8 @@ export default function CRMApp() {
               {Object.entries(formData)
                 .filter(([key]) => !camposExcluidos.includes(key))
                 .map(([key, value]) => (
-                  <div key={key} className="col-span-2 flex items-center gap-2">
-                    <label className="text-sm text-gray-400 capitalize w-1/3">{key}</label>
+                  <div key={key} className="col-span-2">
+                    <label className="text-sm text-gray-400 capitalize">{key}</label>
                     {key === 'intervencion_humana' ? (
                       <input
                         type="checkbox"
@@ -110,6 +129,7 @@ export default function CRMApp() {
                         onChange={(e) =>
                           handleChange(key, e.target.checked)
                         }
+                        className="ml-2"
                       />
                     ) : (
                       <input
@@ -117,7 +137,7 @@ export default function CRMApp() {
                         value={String(value ?? '')}
                         onChange={(e) => handleChange(key, e.target.value)}
                         placeholder={key}
-                        className="flex-1 p-2 rounded bg-gray-800 text-white"
+                        className="w-full p-2 rounded bg-gray-800 text-white"
                       />
                     )}
                   </div>
@@ -130,36 +150,29 @@ export default function CRMApp() {
           </div>
 
           {/* Conversación */}
-          <div className="col-span-8 flex flex-col bg-gray-900 p-4 rounded-xl h-screen">
+          <div className="col-span-8 flex flex-col bg-gray-900 p-4 rounded-xl">
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
-            <div className="flex-1 overflow-y-auto flex flex-col justify-end space-y-2 pr-4 mb-4">
+            <div className="space-y-2 max-h-[calc(100vh-160px)] overflow-y-auto pr-4 mb-4">
               {conversacion.length === 0 ? (
                 <p className="text-gray-500">Sin mensajes aún...</p>
               ) : (
-                conversacion.flatMap((msg, i) => {
-                  const bubbles = [];
-                  if (msg.mensaje_in) {
-                    bubbles.push(
-                      <div key={`in-${i}`} className="bg-gray-800 text-white p-3 rounded-lg w-fit max-w-[80%] self-start">
-                        <p>{msg.mensaje_in}</p>
-                        <p className="text-xs text-gray-400 mt-1 text-right">
-                          {new Date(msg.timestamp_in).toLocaleString()}
-                        </p>
-                      </div>
-                    );
-                  }
-                  if (msg.mensaje_out) {
-                    bubbles.push(
-                      <div key={`out-${i}`} className="bg-green-700 text-white p-3 rounded-lg w-fit max-w-[80%] self-end ml-auto">
-                        <p>{msg.mensaje_out}</p>
-                        <p className="text-xs text-gray-300 mt-1 text-right">
-                          {new Date(msg.timestamp_out).toLocaleString()}
-                        </p>
-                      </div>
-                    );
-                  }
-                  return bubbles;
-                })
+                conversacion.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`p-3 rounded-lg w-fit max-w-[80%] ${
+                      msg.tipo === 'entrada'
+                        ? 'bg-gray-800 self-start'
+                        : msg.tipo === 'salida'
+                        ? 'bg-blue-600 self-end ml-auto'
+                        : 'bg-green-700'
+                    }`}
+                  >
+                    <p>{msg.mensaje}</p>
+                    <p className="text-xs text-gray-300 mt-1 text-right">
+                      {new Date(msg.timestamp_in || msg.timestamp_out).toLocaleString()}
+                    </p>
+                  </div>
+                ))
               )}
             </div>
 
@@ -181,7 +194,42 @@ export default function CRMApp() {
           </div>
         </div>
       ) : (
-        <div className="text-center mt-20 text-gray-400 text-lg">👈 Seleccioná un lead para ver su conversación</div>
+        // Kanban de estados
+        <div className="grid grid-cols-6 gap-4">
+          {[...estados, 'Sin estado'].map((estado) => (
+            <div
+              key={estado}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => handleDrop(e, estado)}
+              className="bg-gray-900 rounded-xl p-4 min-h-[300px]"
+            >
+              <h3 className="text-lg font-bold mb-2">{estado}</h3>
+              {leads
+                .filter((lead) => lead.estado === estado || (!lead.estado && estado === 'Sin estado'))
+                .map((lead) => (
+                  <Card
+                    key={lead.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, lead.id)}
+                    onClick={() => handleSelectLead(lead)}
+                    className="mb-2 p-3 bg-gray-800 cursor-pointer hover:bg-gray-700 transition rounded-lg"
+                  >
+                    <div className="flex justify-between items-center">
+                      <p className="font-semibold">{lead.nombre || 'Sin nombre'}</p>
+                      {lead.canal && (
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full text-white ${getCanalColor(lead.canal)}`}
+                        >
+                          {lead.canal}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-400">{lead.estado || 'Nuevo'}</p>
+                  </Card>
+                ))}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
