@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -76,23 +77,36 @@ export default function CRMApp() {
   const handleSendMessage = async () => {
     if (!nuevoMensaje.trim()) return;
 
-    await supabase.from('conversaciones').insert({
-      lead_id: formData.id,
-      mensaje_out: nuevoMensaje,
-      tipo: 'salida',
-      autor: 'humano',
-      timestamp_out: new Date().toISOString(),
-    });
+    const ultima = [...conversacion].reverse().find(m => m.mensaje && !m.mensaje_out);
+    if (ultima) {
+      await supabase.from('conversaciones')
+        .update({ mensaje_out: nuevoMensaje, autor: 'humano', tipo: 'salida', envio: 'intervencion', timestamp_out: new Date().toISOString() })
+        .eq('id', ultima.id);
 
-    setConversacion((prev) => [
-      ...prev,
-      {
+      setConversacion((prev) =>
+        prev.map(m => m.id === ultima.id ? { ...m, mensaje_out: nuevoMensaje, autor: 'humano', tipo: 'salida', envio: 'intervencion', timestamp_out: new Date().toISOString() } : m)
+      );
+    } else {
+      await supabase.from('conversaciones').insert({
+        lead_id: formData.id,
         mensaje_out: nuevoMensaje,
         tipo: 'salida',
         autor: 'humano',
+        envio: 'intervencion',
         timestamp_out: new Date().toISOString(),
-      },
-    ]);
+      });
+
+      setConversacion((prev) => [
+        ...prev,
+        {
+          mensaje_out: nuevoMensaje,
+          tipo: 'salida',
+          autor: 'humano',
+          envio: 'intervencion',
+          timestamp_out: new Date().toISOString(),
+        },
+      ]);
+    }
 
     setNuevoMensaje('');
   };
@@ -109,7 +123,6 @@ export default function CRMApp() {
     <div className="min-h-screen bg-gray-950 text-white font-sans p-4">
       {selectedLead ? (
         <div className="grid grid-cols-12 gap-4">
-          {/* Panel de edición del lead */}
           <div className="col-span-4 bg-gray-900 p-4 rounded-xl max-h-screen overflow-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">{formData.nombre || 'Lead'}</h3>
@@ -149,40 +162,29 @@ export default function CRMApp() {
             </Button>
           </div>
 
-          {/* Panel de conversación */}
           <div className="col-span-8 flex flex-col bg-gray-900 p-4 rounded-xl max-h-screen">
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
             <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-            {conversacion.map((msg, i) => {
-  const texto = msg.mensaje || msg.mensaje_in || msg.mensaje_out || 'Sin mensaje';
-  const hora = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleString();
-
-  const isEntrada = !!msg.mensaje_in;
-  const isHumano = msg.autor === 'humano' && msg.tipo === 'salida';
-  const isBot = msg.autor === 'bot' && msg.tipo === 'salida';
-
-  const color = isEntrada
-    ? 'bg-green-700'
-    : isHumano
-    ? 'bg-blue-600'
-    : isBot
-    ? 'bg-gray-600'
-    : 'bg-yellow-600';
-
-  const alignment = isEntrada ? 'self-start' : 'self-end ml-auto';
-
-  return (
-    <div
-      key={i}
-      className={`p-3 rounded-lg w-fit max-w-[80%] ${color} ${alignment}`}
-    >
-      <p>{texto}</p>
-      <p className="text-xs text-gray-300 mt-1 text-right">{hora}</p>
-    </div>
-  );
-})}
-
-
+              {conversacion.map((msg, i) => {
+                const texto = msg.mensaje || msg.mensaje_in || msg.mensaje_out || 'Sin mensaje';
+                const hora = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleString();
+                const color =
+                  msg.tipo === 'salida' && msg.autor === 'humano'
+                    ? 'bg-blue-600'
+                    : msg.tipo === 'salida'
+                    ? 'bg-gray-600'
+                    : 'bg-green-700';
+                const alignment = msg.tipo === 'salida' ? 'self-end ml-auto' : 'self-start';
+                return (
+                  <div
+                    key={i}
+                    className={`p-3 rounded-lg w-fit max-w-[80%] ${color} ${alignment}`}
+                  >
+                    <p>{texto}</p>
+                    <p className="text-xs text-gray-300 mt-1 text-right">{hora}</p>
+                  </div>
+                );
+              })}
               <div ref={chatEndRef} />
             </div>
             {formData.intervencion_humana && (
