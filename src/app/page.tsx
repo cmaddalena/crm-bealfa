@@ -154,31 +154,34 @@ export default function CRMApp() {
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
             <div className="flex-1 overflow-y-auto space-y-2 pr-2">
             {conversacion.map((msg, i) => {
-              const isEntrada = msg.mensaje_in;
-              const isBot = msg.tipo === 'salida' && msg.autor === 'bot';
-              const isHumano = msg.tipo === 'salida' && msg.autor === 'humano';
+  const texto = msg.mensaje || msg.mensaje_in || msg.mensaje_out || 'Sin mensaje';
+  const hora = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleString();
 
-              const texto = msg.mensaje || msg.mensaje_in || msg.mensaje_out || 'Sin mensaje';
-              const hora = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleString();
+  const isEntrada = !!msg.mensaje_in;
+  const isHumano = msg.autor === 'humano' && msg.tipo === 'salida';
+  const isBot = msg.autor === 'bot' && msg.tipo === 'salida';
 
-              const color = isEntrada
-                ? 'bg-green-700'
-                : isHumano
-                ? 'bg-blue-600'
-                : 'bg-gray-600';
+  const color = isEntrada
+    ? 'bg-green-700'
+    : isHumano
+    ? 'bg-blue-600'
+    : isBot
+    ? 'bg-gray-600'
+    : 'bg-yellow-600';
 
-              const alignment = isEntrada ? 'self-start' : 'self-end ml-auto';
+  const alignment = isEntrada ? 'self-start' : 'self-end ml-auto';
 
-              return (
-                <div
-                  key={i}
-                  className={`p-3 rounded-lg w-fit max-w-[80%] ${color} ${alignment}`}
-                >
-                  <p>{texto}</p>
-                  <p className="text-xs text-gray-300 mt-1 text-right">{hora}</p>
-                </div>
-              );
-            })}
+  return (
+    <div
+      key={i}
+      className={`p-3 rounded-lg w-fit max-w-[80%] ${color} ${alignment}`}
+    >
+      <p>{texto}</p>
+      <p className="text-xs text-gray-300 mt-1 text-right">{hora}</p>
+    </div>
+  );
+})}
+
 
               <div ref={chatEndRef} />
             </div>
