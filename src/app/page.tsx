@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Card } from './components/ui/card';
 import { Button } from './components/ui/button';
@@ -17,6 +17,7 @@ export default function CRMApp() {
   const [formData, setFormData] = useState<any>({});
   const [conversacion, setConversacion] = useState<any[]>([]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
+  const conversacionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchEstados = async () => {
@@ -42,6 +43,9 @@ export default function CRMApp() {
       .eq('lead_id', lead.id)
       .order('timestamp_in', { ascending: true });
     setConversacion(data || []);
+    setTimeout(() => {
+      conversacionRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   const handleChange = (field: string, value: any) => {
@@ -94,6 +98,9 @@ export default function CRMApp() {
     ]);
 
     setNuevoMensaje('');
+    setTimeout(() => {
+      conversacionRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   const camposExcluidos = ['id', 'fecha_creacion', 'usuario_update', 'fecha_update'];
@@ -102,8 +109,7 @@ export default function CRMApp() {
     <div className="min-h-screen bg-gray-950 text-white font-sans p-4">
       {selectedLead ? (
         <div className="grid grid-cols-12 gap-4">
-          {/* Datos del lead */}
-          <div className="col-span-4 bg-gray-900 p-4 rounded-xl">
+          <div className="col-span-4 bg-gray-900 p-4 rounded-xl h-[calc(100vh-40px)] overflow-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">{formData.nombre || 'Lead'}</h3>
               <button
@@ -118,8 +124,8 @@ export default function CRMApp() {
               {Object.entries(formData)
                 .filter(([key]) => !camposExcluidos.includes(key))
                 .map(([key, value]) => (
-                  <div key={key} className="col-span-2">
-                    <label className="text-sm text-gray-400 capitalize">{key}</label>
+                  <div key={key} className="col-span-2 flex items-center gap-2">
+                    <label className="text-sm text-gray-400 capitalize w-1/3">{key}</label>
                     {key === 'intervencion_humana' ? (
                       <input
                         type="checkbox"
@@ -127,7 +133,6 @@ export default function CRMApp() {
                         onChange={(e) =>
                           handleChange(key, e.target.checked)
                         }
-                        className="ml-2"
                       />
                     ) : (
                       <input
@@ -135,7 +140,7 @@ export default function CRMApp() {
                         value={String(value ?? '')}
                         onChange={(e) => handleChange(key, e.target.value)}
                         placeholder={key}
-                        className="w-full p-2 rounded bg-gray-800 text-white"
+                        className="flex-1 p-2 rounded bg-gray-800 text-white"
                       />
                     )}
                   </div>
@@ -153,10 +158,9 @@ export default function CRMApp() {
             )}
           </div>
 
-          {/* Conversación */}
-          <div className="col-span-8 flex flex-col bg-gray-900 p-4 rounded-xl">
+          <div className="col-span-8 flex flex-col bg-gray-900 p-4 rounded-xl h-[calc(100vh-40px)]">
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
-            <div className="space-y-2 max-h-[calc(100vh-160px)] overflow-y-auto pr-4 mb-4">
+            <div className="flex-1 overflow-y-auto space-y-2 pr-4">
               {conversacion.length === 0 ? (
                 <p className="text-gray-500">Sin mensajes aún...</p>
               ) : (
@@ -176,10 +180,11 @@ export default function CRMApp() {
                   </div>
                 ))
               )}
+              <div ref={conversacionRef} />
             </div>
 
             {formData.intervencion_humana && (
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-2 items-center mt-4">
                 <input
                   type="text"
                   placeholder="Escribí tu mensaje..."
@@ -196,7 +201,6 @@ export default function CRMApp() {
           </div>
         </div>
       ) : (
-        // Kanban de estados
         <div className="grid grid-cols-6 gap-4">
           {[...estados, 'Sin estado'].map((estado) => (
             <div
