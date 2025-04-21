@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Card } from './components/ui/card';
 import { Button } from './components/ui/button';
@@ -17,7 +18,6 @@ export default function CRMApp() {
   const [formData, setFormData] = useState<any>({});
   const [conversacion, setConversacion] = useState<any[]>([]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
-  const conversacionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchEstados = async () => {
@@ -43,28 +43,20 @@ export default function CRMApp() {
       .eq('lead_id', lead.id)
       .order('timestamp_in', { ascending: true });
     setConversacion(data || []);
-    setTimeout(() => {
-      conversacionRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
   };
 
-  const handleChange = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
+  const handleChange = async (field: string, value: any) => {
+    const updatedData = { ...formData, [field]: value };
+    setFormData(updatedData);
+    if (field === 'intervencion_humana') {
+      await supabase.from('leads').update({ [field]: value }).eq('id', formData.id);
+    }
   };
 
   const handleGuardar = async () => {
     await supabase.from('leads').update(formData).eq('id', formData.id);
     setLeads((prev) => prev.map((l) => (l.id === formData.id ? formData : l)));
     setSelectedLead(null);
-  };
-
-  const handleTomarConversacion = async () => {
-    await supabase
-      .from('leads')
-      .update({ intervencion_humana: true })
-      .eq('id', formData.id);
-    setFormData({ ...formData, intervencion_humana: true });
-    setSelectedLead({ ...formData, intervencion_humana: true });
   };
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
@@ -98,9 +90,6 @@ export default function CRMApp() {
     ]);
 
     setNuevoMensaje('');
-    setTimeout(() => {
-      conversacionRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
   };
 
   const camposExcluidos = ['id', 'fecha_creacion', 'usuario_update', 'fecha_update'];
@@ -108,31 +97,23 @@ export default function CRMApp() {
   return (
     <div className="min-h-screen bg-gray-950 text-white font-sans p-4">
       {selectedLead ? (
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-4 bg-gray-900 p-4 rounded-xl h-[calc(100vh-40px)] overflow-auto">
+        <div className="grid grid-cols-12 gap-4 h-screen">
+          <div className="col-span-4 bg-gray-900 p-4 rounded-xl overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">{formData.nombre || 'Lead'}</h3>
-              <button
-                className="text-red-500 hover:text-red-400"
-                onClick={() => setSelectedLead(null)}
-              >
-                ❌
-              </button>
+              <button className="text-red-500 hover:text-red-400" onClick={() => setSelectedLead(null)}>❌</button>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               {Object.entries(formData)
                 .filter(([key]) => !camposExcluidos.includes(key))
                 .map(([key, value]) => (
-                  <div key={key} className="col-span-2 flex items-center gap-2">
-                    <label className="text-sm text-gray-400 capitalize w-1/3">{key}</label>
+                  <div key={key} className="col-span-2 flex items-center justify-between gap-2">
+                    <label className="text-sm text-gray-400 capitalize w-1/2">{key}</label>
                     {key === 'intervencion_humana' ? (
                       <input
                         type="checkbox"
                         checked={value === true}
-                        onChange={(e) =>
-                          handleChange(key, e.target.checked)
-                        }
+                        onChange={(e) => handleChange(key, e.target.checked)}
                       />
                     ) : (
                       <input
@@ -140,27 +121,20 @@ export default function CRMApp() {
                         value={String(value ?? '')}
                         onChange={(e) => handleChange(key, e.target.value)}
                         placeholder={key}
-                        className="flex-1 p-2 rounded bg-gray-800 text-white"
+                        className="w-full p-2 rounded bg-gray-800 text-white"
                       />
                     )}
                   </div>
-                ))}
+              ))}
             </div>
-
-            <Button onClick={handleGuardar} className="w-full mt-4 bg-green-600 rounded-full">
-              Guardar
-            </Button>
-
-            {!formData.intervencion_humana && (
-              <Button onClick={handleTomarConversacion} className="w-full mt-2 bg-blue-600 rounded-full">
-                Tomar conversación
-              </Button>
-            )}
+            <div className="flex gap-2 mt-4">
+              <Button onClick={handleGuardar} className="w-full bg-green-600 rounded-full">Guardar</Button>
+            </div>
           </div>
 
-          <div className="col-span-8 flex flex-col bg-gray-900 p-4 rounded-xl h-[calc(100vh-40px)]">
-            <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
-            <div className="flex-1 overflow-y-auto space-y-2 pr-4">
+          <div className="col-span-8 flex flex-col bg-gray-900 p-4 rounded-xl h-full">
+            <h3 className="text-xl font-bold mb-2">💬 Conversación</h3>
+            <div className="flex-1 overflow-y-auto flex flex-col justify-end space-y-2 pr-4 mb-2">
               {conversacion.length === 0 ? (
                 <p className="text-gray-500">Sin mensajes aún...</p>
               ) : (
@@ -169,8 +143,8 @@ export default function CRMApp() {
                     key={i}
                     className={`p-3 rounded-lg w-fit max-w-[80%] ${
                       msg.tipo === 'entrada'
-                        ? 'bg-gray-800 self-start'
-                        : 'bg-green-700 self-end ml-auto'
+                        ? 'bg-blue-700 self-start'
+                        : 'bg-gray-700 self-end ml-auto'
                     }`}
                   >
                     <p>{msg.mensaje}</p>
@@ -180,11 +154,9 @@ export default function CRMApp() {
                   </div>
                 ))
               )}
-              <div ref={conversacionRef} />
             </div>
-
             {formData.intervencion_humana && (
-              <div className="flex gap-2 items-center mt-4">
+              <div className="flex gap-2 items-center mt-2">
                 <input
                   type="text"
                   placeholder="Escribí tu mensaje..."
@@ -193,9 +165,7 @@ export default function CRMApp() {
                   onChange={(e) => setNuevoMensaje(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                 />
-                <Button onClick={handleSendMessage} className="bg-blue-600 rounded-full">
-                  Enviar
-                </Button>
+                <Button onClick={handleSendMessage} className="bg-blue-600 rounded-full">Enviar</Button>
               </div>
             )}
           </div>
