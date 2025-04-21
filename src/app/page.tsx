@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -52,7 +51,6 @@ export default function CRMApp() {
 
   const handleChange = (field: string, value: any) => {
     setFormData({ ...formData, [field]: value });
-
     if (field === 'intervencion_humana') {
       supabase.from('leads').update({ [field]: value }).eq('id', formData.id);
     }
@@ -111,6 +109,7 @@ export default function CRMApp() {
     <div className="min-h-screen bg-gray-950 text-white font-sans p-4">
       {selectedLead ? (
         <div className="grid grid-cols-12 gap-4">
+          {/* Panel de edición del lead */}
           <div className="col-span-4 bg-gray-900 p-4 rounded-xl max-h-screen overflow-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">{formData.nombre || 'Lead'}</h3>
@@ -150,6 +149,7 @@ export default function CRMApp() {
             </Button>
           </div>
 
+          {/* Panel de conversación */}
           <div className="col-span-8 flex flex-col bg-gray-900 p-4 rounded-xl max-h-screen">
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
             <div className="flex-1 overflow-y-auto space-y-2 pr-2">
@@ -221,7 +221,11 @@ export default function CRMApp() {
                   >
                     <div className="flex justify-between items-center">
                       <p className="font-semibold">{lead.nombre || 'Sin nombre'}</p>
-                      <span className={`text-xs text-white px-2 py-1 rounded-full ${canalColor(lead.canal || '')}`}>
+                      <span
+                        className={`text-xs text-white px-2 py-1 rounded-full ${canalColor(
+                          lead.canal || ''
+                        )}`}
+                      >
                         {lead.canal}
                       </span>
                     </div>
