@@ -101,8 +101,8 @@ export default function CRMApp() {
   const camposExcluidos = ['id', 'fecha_creacion', 'usuario_update', 'fecha_update'];
 
   const canalColor = (canal: string) => {
-    if (canal?.toLowerCase().includes('whatsapp')) return 'bg-green-600';
-    if (canal?.toLowerCase().includes('instagram')) return 'bg-pink-600';
+    if (canal.toLowerCase().includes('whatsapp')) return 'bg-green-600';
+    if (canal.toLowerCase().includes('instagram')) return 'bg-pink-600';
     return 'bg-gray-600';
   };
 
@@ -153,47 +153,34 @@ export default function CRMApp() {
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
             <div className="flex-1 overflow-y-auto space-y-2 pr-2">
               {conversacion.map((msg, i) => {
-                const items = [];
-                if (msg.mensaje_in) {
-                  items.push({
-                    texto: msg.mensaje_in,
-                    tipo: 'entrada',
-                    fecha: msg.timestamp_in,
-                  });
-                }
-                if (msg.mensaje_out) {
-                  items.push({
-                    texto: msg.mensaje_out,
-                    tipo: msg.autor === 'humano' ? 'humano' : 'bot',
-                    fecha: msg.timestamp_out,
-                  });
-                }
+                const mensajeIn = msg.mensaje || msg.mensaje_in;
+                const mensajeOut = msg.mensaje_out;
+                const horaIn = msg.timestamp_in && new Date(msg.timestamp_in).toLocaleTimeString();
+                const horaOut = msg.timestamp_out && new Date(msg.timestamp_out).toLocaleTimeString();
 
-                return items.map((item, j) => {
-                  const color =
-                    item.tipo === 'entrada' ? 'bg-green-700' :
-                    item.tipo === 'humano' ? 'bg-blue-600' :
-                    'bg-gray-600';
-
-                  const alignment =
-                    item.tipo === 'entrada' ? 'self-start' : 'self-end ml-auto';
-
-                  return (
-                    <div
-                      key={`${i}-${j}`}
-                      className={`p-3 rounded-lg w-fit max-w-[80%] ${color} ${alignment}`}
-                    >
-                      <p>{item.texto}</p>
-                      <p className="text-xs text-gray-300 mt-1 text-right">
-                        {new Date(item.fecha).toLocaleString()}
-                      </p>
-                    </div>
-                  );
-                });
+                return (
+                  <div key={i}>
+                    {mensajeIn && (
+                      <div className="p-3 rounded-lg w-fit max-w-[80%] bg-green-700 self-start">
+                        <p>{mensajeIn}</p>
+                        <p className="text-xs text-gray-300 mt-1 text-right">{horaIn}</p>
+                      </div>
+                    )}
+                    {mensajeOut && (
+                      <div
+                        className={`p-3 rounded-lg w-fit max-w-[80%] ${
+                          msg.autor === 'humano' ? 'bg-blue-600' : 'bg-gray-600'
+                        } self-end ml-auto`}
+                      >
+                        <p>{mensajeOut}</p>
+                        <p className="text-xs text-gray-300 mt-1 text-right">{horaOut}</p>
+                      </div>
+                    )}
+                  </div>
+                );
               })}
               <div ref={chatEndRef} />
             </div>
-
             {formData.intervencion_humana && (
               <div className="flex gap-2 mt-4 items-center">
                 <input
@@ -234,7 +221,9 @@ export default function CRMApp() {
                     <div className="flex justify-between items-center">
                       <p className="font-semibold">{lead.nombre || 'Sin nombre'}</p>
                       <span
-                        className={`text-xs text-white px-2 py-1 rounded-full ${canalColor(lead.canal || '')}`}
+                        className={`text-xs text-white px-2 py-1 rounded-full ${canalColor(
+                          lead.canal || ''
+                        )}`}
                       >
                         {lead.canal}
                       </span>
