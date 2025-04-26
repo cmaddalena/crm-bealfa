@@ -25,10 +25,10 @@ export default function CRMApp() {
     const fetchData = async () => {
       const { data: estadosData } = await supabase.from('estados_crm').select('nombre_estado');
       setEstados(estadosData?.map(e => e.nombre_estado) || []);
-      
+
       const { data: leadsData } = await supabase.from('leads').select('*');
       setLeads(leadsData || []);
-      
+
       const { data: configData } = await supabase.from('config').select('*').single();
       setConfig(configData || {});
     };
@@ -161,16 +161,18 @@ export default function CRMApp() {
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
             <div className="flex-1 overflow-y-auto space-y-2 pr-2">
               {conversacion.map((msg, i) => {
-                const texto = msg.mensaje_in || msg.mensaje_out || 'Sin mensaje';
-                const hora = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const fecha = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleDateString('es-AR');
+                const isEntrada = msg.mensaje_in;
+                const isSalidaHumano = msg.tipo === 'salida' && msg.autor === 'humano';
+                const isSalidaBot = msg.tipo === 'salida' && msg.autor === 'bot';
+                const texto = isEntrada ? msg.mensaje_in : msg.mensaje_out || 'Sin mensaje';
+                const horaFecha = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleString('es-AR');
 
-                let color = 'bg-gray-600';
-                if (msg.mensaje_in) color = 'bg-green-700';
-                else if (msg.autor === 'humano') color = 'bg-blue-600';
-                else if (msg.autor === 'bot') color = 'bg-gray-500';
+                let color = 'bg-gray-500';
+                if (isEntrada) color = 'bg-green-700';
+                else if (isSalidaHumano) color = 'bg-blue-600';
+                else if (isSalidaBot) color = 'bg-gray-600';
 
-                const alignment = msg.mensaje_in ? 'self-start' : 'self-end ml-auto';
+                const alignment = isEntrada ? 'self-start' : 'self-end ml-auto';
 
                 return (
                   <div
@@ -179,7 +181,7 @@ export default function CRMApp() {
                     style={{ color: config.color_secundario || 'white' }}
                   >
                     <p>{texto}</p>
-                    <p className="text-xs mt-1 text-right">{hora} {fecha}</p>
+                    <p className="text-xs mt-1 text-right">{horaFecha}</p>
                   </div>
                 );
               })}
