@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -24,10 +25,10 @@ export default function CRMApp() {
     const fetchData = async () => {
       const { data: estadosData } = await supabase.from('estados_crm').select('nombre_estado');
       setEstados(estadosData?.map(e => e.nombre_estado) || []);
-
+      
       const { data: leadsData } = await supabase.from('leads').select('*');
       setLeads(leadsData || []);
-
+      
       const { data: configData } = await supabase.from('config').select('*').single();
       setConfig(configData || {});
     };
@@ -104,28 +105,19 @@ export default function CRMApp() {
   };
 
   return (
-    <div
-      className="min-h-screen font-sans p-4"
-      style={{ backgroundColor: config.color_fondo || '#0a0a0a', color: config.color_primario || '#ffffff' }}
-    >
-      {/* Header CRM */}
-      <div className="flex items-center mb-6">
+    <div className="min-h-screen" style={{ backgroundColor: config.color_fondo || '#0f172a', color: config.color_secundario || 'white' }}>
+      <div className="flex items-center mb-6 p-4">
         {config.logo_url && (
           <img src={config.logo_url} alt="Logo" className="h-12 w-12 mr-4 rounded-full object-cover" />
         )}
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: config.color_primario }}>
-            {config.titulo_crm || 'CRM'}
-          </h1>
-          <p className="text-sm" style={{ color: config.color_secundario }}>
-            {config.slogan_crm || ''}
-          </p>
+          <h1 className="text-2xl font-bold" style={{ color: config.color_primario || 'white' }}>{config.titulo_crm || 'CRM'}</h1>
+          <p className="text-sm" style={{ color: config.color_secundario || 'gray' }}>{config.slogan_crm || ''}</p>
         </div>
       </div>
 
       {selectedLead ? (
-        <div className="grid grid-cols-12 gap-4">
-          {/* Lead Panel */}
+        <div className="grid grid-cols-12 gap-4 p-4">
           <div className="col-span-4 bg-gray-900 p-4 rounded-xl max-h-screen overflow-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">{formData.nombre || 'Lead'}</h3>
@@ -141,7 +133,7 @@ export default function CRMApp() {
                 .filter(([key]) => !camposExcluidos.includes(key))
                 .map(([key, value]) => (
                   <div key={key} className="col-span-2">
-                    <label className="text-sm text-gray-400 capitalize">{key}</label>
+                    <label className="text-sm capitalize">{key}</label>
                     {key === 'intervencion_humana' ? (
                       <input
                         type="checkbox"
@@ -160,28 +152,24 @@ export default function CRMApp() {
                   </div>
                 ))}
             </div>
-            <Button onClick={handleGuardar} className="w-full mt-4" style={{ backgroundColor: config.color_ascento }}>
+            <Button onClick={handleGuardar} className="w-full mt-4" style={{ backgroundColor: config.color_ascento || '#4f46e5' }}>
               Guardar
             </Button>
           </div>
 
-          {/* Conversation Panel */}
           <div className="col-span-8 flex flex-col bg-gray-900 p-4 rounded-xl max-h-screen">
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
             <div className="flex-1 overflow-y-auto space-y-2 pr-2">
               {conversacion.map((msg, i) => {
                 const isEntrada = msg.mensaje_in;
-                const isBot = msg.tipo === 'salida' && msg.autor === 'bot';
                 const isHumano = msg.tipo === 'salida' && msg.autor === 'humano';
                 const texto = msg.mensaje_in || msg.mensaje_out || 'Sin mensaje';
                 const hora = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const fecha = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleDateString('es-AR');
 
-                const color = isEntrada
-                  ? 'bg-green-700'
-                  : isHumano
-                  ? 'bg-blue-600'
-                  : 'bg-gray-600';
+                let color = 'bg-gray-600';
+                if (isEntrada) color = 'bg-green-700';
+                else if (isHumano) color = 'bg-blue-600';
 
                 const alignment = isEntrada ? 'self-start' : 'self-end ml-auto';
 
@@ -189,15 +177,15 @@ export default function CRMApp() {
                   <div
                     key={i}
                     className={`p-3 rounded-lg w-fit max-w-[80%] ${color} ${alignment}`}
+                    style={{ color: config.color_secundario || 'white' }}
                   >
                     <p>{texto}</p>
-                    <p className="text-xs text-gray-300 mt-1 text-right">{hora} {fecha}</p>
+                    <p className="text-xs mt-1 text-right">{hora} {fecha}</p>
                   </div>
                 );
               })}
               <div ref={chatEndRef} />
             </div>
-
             {formData.intervencion_humana && (
               <div className="flex gap-2 mt-4 items-center">
                 <input
@@ -208,11 +196,7 @@ export default function CRMApp() {
                   onChange={(e) => setNuevoMensaje(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                 />
-                <Button
-                  onClick={handleSendMessage}
-                  className="rounded-full"
-                  style={{ backgroundColor: config.color_ascento }}
-                >
+                <Button onClick={handleSendMessage} style={{ backgroundColor: config.color_ascento || '#4f46e5' }} className="rounded-full">
                   Enviar
                 </Button>
               </div>
@@ -220,7 +204,7 @@ export default function CRMApp() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-6 gap-4">
+        <div className="grid grid-cols-6 gap-4 p-4">
           {[...estados, 'Sin estado'].map((estado) => (
             <div
               key={estado}
@@ -228,7 +212,7 @@ export default function CRMApp() {
               onDrop={(e) => handleDrop(e, estado)}
               className="bg-gray-900 rounded-xl p-4 min-h-[300px]"
             >
-              <h3 className="text-lg font-bold">{estado}</h3>
+              <h3 className="text-lg font-bold mb-2">{estado}</h3>
               {leads
                 .filter((lead) => lead.estado === estado || (!lead.estado && estado === 'Sin estado'))
                 .map((lead) => (
