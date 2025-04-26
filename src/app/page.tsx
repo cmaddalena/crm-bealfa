@@ -25,10 +25,10 @@ export default function CRMApp() {
     const fetchData = async () => {
       const { data: estadosData } = await supabase.from('estados_crm').select('nombre_estado');
       setEstados(estadosData?.map(e => e.nombre_estado) || []);
-
+      
       const { data: leadsData } = await supabase.from('leads').select('*');
       setLeads(leadsData || []);
-
+      
       const { data: configData } = await supabase.from('config').select('*').single();
       setConfig(configData || {});
     };
@@ -160,31 +160,22 @@ export default function CRMApp() {
           <div className="col-span-8 flex flex-col bg-gray-900 p-4 rounded-xl max-h-screen">
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
             <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-              {conversacion.map((msg, i) => {
-                const isEntrada = msg.mensaje_in;
-                const isSalidaHumano = msg.tipo === 'salida' && msg.autor === 'humano';
-                const isSalidaBot = msg.tipo === 'salida' && msg.autor === 'bot';
-                const texto = isEntrada ? msg.mensaje_in : msg.mensaje_out || 'Sin mensaje';
-                const horaFecha = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleString('es-AR');
-
-                let color = 'bg-gray-500';
-                if (isEntrada) color = 'bg-green-700';
-                else if (isSalidaHumano) color = 'bg-blue-600';
-                else if (isSalidaBot) color = 'bg-gray-600';
-
-                const alignment = isEntrada ? 'self-start' : 'self-end ml-auto';
-
-                return (
-                  <div
-                    key={i}
-                    className={`p-3 rounded-lg w-fit max-w-[80%] ${color} ${alignment}`}
-                    style={{ color: config.color_secundario || 'white' }}
-                  >
-                    <p>{texto}</p>
-                    <p className="text-xs mt-1 text-right">{horaFecha}</p>
-                  </div>
-                );
-              })}
+              {conversacion.map((msg, i) => (
+                <div key={i}>
+                  {msg.mensaje_in && (
+                    <div className="p-3 rounded-lg w-fit max-w-[80%] bg-green-700 self-start" style={{ color: config.color_secundario || 'white' }}>
+                      <p>{msg.mensaje_in}</p>
+                      <p className="text-xs mt-1 text-right">{new Date(msg.timestamp_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(msg.timestamp_in).toLocaleDateString('es-AR')}</p>
+                    </div>
+                  )}
+                  {msg.mensaje_out && (
+                    <div className={`p-3 rounded-lg w-fit max-w-[80%] ${msg.autor === 'humano' ? 'bg-blue-600 self-end ml-auto' : 'bg-gray-500 self-end ml-auto'}`} style={{ color: config.color_secundario || 'white' }}>
+                      <p>{msg.mensaje_out}</p>
+                      <p className="text-xs mt-1 text-right">{new Date(msg.timestamp_out || msg.timestamp_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(msg.timestamp_out || msg.timestamp_in).toLocaleDateString('es-AR')}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
               <div ref={chatEndRef} />
             </div>
             {formData.intervencion_humana && (
