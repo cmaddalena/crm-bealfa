@@ -5,7 +5,6 @@ import { createClient } from '@supabase/supabase-js';
 import { Card } from './components/ui/card';
 import { Button } from './components/ui/button';
 
-// Conexión a Supabase
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -18,43 +17,27 @@ export default function CRMApp() {
   const [formData, setFormData] = useState<any>({});
   const [conversacion, setConversacion] = useState<any[]>([]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
+  const [config, setConfig] = useState<any>({});
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch de estados y leads al cargar
   useEffect(() => {
     const fetchData = async () => {
       const { data: estadosData } = await supabase.from('estados_crm').select('nombre_estado');
+      setEstados(estadosData?.map(e => e.nombre_estado) || []);
+      
       const { data: leadsData } = await supabase.from('leads').select('*');
-
-      setEstados(estadosData?.map((e) => e.nombre_estado) || []);
       setLeads(leadsData || []);
+      
+      const { data: configData } = await supabase.from('config').select('*').single();
+      setConfig(configData || {});
     };
 
     fetchData();
   }, []);
 
-  // Scroll automático al nuevo mensaje
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversacion]);
-
-  // Refrescar conversación en tiempo real
-  useEffect(() => {
-    if (!selectedLead) return;
-    const channel = supabase
-      .channel('conversaciones_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversaciones' }, (payload: any) => {
-        if (payload.new.lead_id === selectedLead.id) {
-          fetchConversacion(selectedLead.id);
-        }
-      })
-      
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selectedLead]);
 
   const fetchConversacion = async (leadId: string) => {
     const { data } = await supabase
@@ -65,7 +48,7 @@ export default function CRMApp() {
     setConversacion(data || []);
   };
 
-  const handleSelectLead = async (lead: any) => {
+  const handleSelectLead = (lead: any) => {
     setSelectedLead(lead);
     setFormData(lead);
     fetchConversacion(lead.id);
@@ -80,8 +63,19 @@ export default function CRMApp() {
 
   const handleGuardar = async () => {
     await supabase.from('leads').update(formData).eq('id', formData.id);
-    setLeads((prev) => prev.map((l) => (l.id === formData.id ? formData : l)));
+    setLeads(prev => prev.map(l => (l.id === formData.id ? formData : l)));
     setSelectedLead(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, estado: string) => {
+    const id = e.dataTransfer.getData('text/plain');
+    await supabase.from('leads').update({ estado }).eq('id', id);
+    const { data } = await supabase.from('leads').select('*');
+    setLeads(data || []);
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('text/plain', id);
   };
 
   const handleSendMessage = async () => {
@@ -92,42 +86,39 @@ export default function CRMApp() {
       mensaje_out: nuevoMensaje,
       tipo: 'salida',
       autor: 'humano',
+      envio: 'enviado',
       timestamp_out: new Date().toISOString(),
     });
 
+    fetchConversacion(formData.id);
     setNuevoMensaje('');
   };
 
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    e.dataTransfer.setData('text/plain', id);
-  };
-
-  const handleDrop = async (e: React.DragEvent, estado: string) => {
-    const id = e.dataTransfer.getData('text/plain');
-    await supabase.from('leads').update({ estado }).eq('id', id);
-    const { data } = await supabase.from('leads').select('*');
-    setLeads(data || []);
-  };
+  const camposExcluidos = ['id', 'fecha_creacion', 'usuario_update', 'fecha_update'];
 
   const canalColor = (canal: string) => {
+    if (!canal) return 'bg-gray-600';
     if (canal.toLowerCase().includes('whatsapp')) return 'bg-green-600';
     if (canal.toLowerCase().includes('instagram')) return 'bg-pink-600';
     return 'bg-gray-600';
   };
 
-  const camposExcluidos = ['id', 'fecha_creacion', 'usuario_update', 'fecha_update'];
-
-  // Formateo de timestamp (fecha + hora)
-  const formatDateTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return `${date.toLocaleDateString('es-AR')} - ${date.toLocaleTimeString('es-AR')}`;
-  };
-
   return (
     <div className="min-h-screen bg-gray-950 text-white font-sans p-4">
+      {/* Header de CRM */}
+      <div className="flex items-center mb-6">
+        {config.logo_url && (
+          <img src={config.logo_url} alt="Logo" className="h-12 w-12 mr-4 rounded-full object-cover" />
+        )}
+        <div>
+          <h1 className="text-2xl font-bold">{config.titulo_crm || 'CRM'}</h1>
+          <p className="text-sm text-gray-400">{config.slogan_crm || ''}</p>
+        </div>
+      </div>
+
       {selectedLead ? (
         <div className="grid grid-cols-12 gap-4">
-          {/* Panel de edición de lead */}
+          {/* Panel de edición del Lead */}
           <div className="col-span-4 bg-gray-900 p-4 rounded-xl max-h-screen overflow-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">{formData.nombre || 'Lead'}</h3>
@@ -138,7 +129,6 @@ export default function CRMApp() {
                 ❌
               </button>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               {Object.entries(formData)
                 .filter(([key]) => !camposExcluidos.includes(key))
@@ -163,7 +153,6 @@ export default function CRMApp() {
                   </div>
                 ))}
             </div>
-
             <Button onClick={handleGuardar} className="w-full mt-4 bg-green-600 rounded-full">
               Guardar
             </Button>
@@ -173,41 +162,34 @@ export default function CRMApp() {
           <div className="col-span-8 flex flex-col bg-gray-900 p-4 rounded-xl max-h-screen">
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
             <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-              {conversacion.length === 0 ? (
-                <p className="text-gray-500">Sin mensajes aún...</p>
-              ) : (
-                conversacion.map((msg, i) => {
-                  const isEntrada = !!msg.mensaje_in;
-                  const isBot = msg.tipo === 'salida' && msg.autor === 'bot';
-                  const isHumano = msg.tipo === 'salida' && msg.autor === 'humano';
-                  const texto = msg.mensaje_in || msg.mensaje_out || msg.mensaje || 'Sin mensaje';
-                  const hora = msg.timestamp_in || msg.timestamp_out;
+              {conversacion.map((msg, i) => {
+                const isEntrada = msg.mensaje_in;
+                const isBot = msg.tipo === 'salida' && msg.autor === 'bot';
+                const isHumano = msg.tipo === 'salida' && msg.autor === 'humano';
+                const texto = msg.mensaje_in || msg.mensaje_out || 'Sin mensaje';
+                const hora = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const fecha = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleDateString('es-AR');
 
-                  const color = isEntrada
-                    ? 'bg-green-700'
-                    : isHumano
-                    ? 'bg-blue-600'
-                    : 'bg-gray-600';
+                const color = isEntrada
+                  ? 'bg-green-700'
+                  : isHumano
+                  ? 'bg-blue-600'
+                  : 'bg-gray-600';
 
-                  const alignment = isEntrada ? 'self-start' : 'self-end ml-auto';
+                const alignment = isEntrada ? 'self-start' : 'self-end ml-auto';
 
-                  return (
-                    <div
-                      key={i}
-                      className={`p-3 rounded-lg w-fit max-w-[80%] ${color} ${alignment}`}
-                    >
-                      <p>{texto}</p>
-                      <p className="text-xs text-gray-300 mt-1 text-right">
-                        {hora ? formatDateTime(hora) : ''}
-                      </p>
-                    </div>
-                  );
-                })
-              )}
+                return (
+                  <div
+                    key={i}
+                    className={`p-3 rounded-lg w-fit max-w-[80%] ${color} ${alignment}`}
+                  >
+                    <p>{texto}</p>
+                    <p className="text-xs text-gray-300 mt-1 text-right">{hora} {fecha}</p>
+                  </div>
+                );
+              })}
               <div ref={chatEndRef} />
             </div>
-
-            {/* Campo de nuevo mensaje */}
             {formData.intervencion_humana && (
               <div className="flex gap-2 mt-4 items-center">
                 <input
@@ -226,7 +208,6 @@ export default function CRMApp() {
           </div>
         </div>
       ) : (
-        // Tablero Kanban de estados
         <div className="grid grid-cols-6 gap-4">
           {[...estados, 'Sin estado'].map((estado) => (
             <div
@@ -248,11 +229,7 @@ export default function CRMApp() {
                   >
                     <div className="flex justify-between items-center">
                       <p className="font-semibold">{lead.nombre || 'Sin nombre'}</p>
-                      <span
-                        className={`text-xs text-white px-2 py-1 rounded-full ${canalColor(
-                          lead.canal || ''
-                        )}`}
-                      >
+                      <span className={`text-xs text-white px-2 py-1 rounded-full ${canalColor(lead.canal || '')}`}>
                         {lead.canal}
                       </span>
                     </div>
