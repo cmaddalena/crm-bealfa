@@ -111,7 +111,7 @@ export default function CRMApp() {
           <img src={config.logo_url} alt="Logo" className="h-12 w-12 mr-4 rounded-full object-cover" />
         )}
         <div>
-          <h1 className="text-2xl font-bold">{config.titulo_crm || 'CRM'}</h1>
+        <h1 className="text-2xl font-bold">{config.titulo_crm || 'CRM'}</h1>
           <p className="text-sm text-gray-400">{config.slogan_crm || ''}</p>
         </div>
       </div>
