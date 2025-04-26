@@ -161,17 +161,16 @@ export default function CRMApp() {
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
             <div className="flex-1 overflow-y-auto space-y-2 pr-2">
               {conversacion.map((msg, i) => {
-                const isEntrada = msg.mensaje_in;
-                const isHumano = msg.tipo === 'salida' && msg.autor === 'humano';
                 const texto = msg.mensaje_in || msg.mensaje_out || 'Sin mensaje';
                 const hora = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const fecha = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleDateString('es-AR');
 
                 let color = 'bg-gray-600';
-                if (isEntrada) color = 'bg-green-700';
-                else if (isHumano) color = 'bg-blue-600';
+                if (msg.mensaje_in) color = 'bg-green-700';
+                else if (msg.tipo === 'salida' && msg.autor === 'humano') color = 'bg-blue-600';
+                else if (msg.tipo === 'salida' && msg.autor === 'bot') color = 'bg-gray-600';
 
-                const alignment = isEntrada ? 'self-start' : 'self-end ml-auto';
+                const alignment = msg.mensaje_in ? 'self-start' : 'self-end ml-auto';
 
                 return (
                   <div
