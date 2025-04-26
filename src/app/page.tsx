@@ -167,8 +167,8 @@ export default function CRMApp() {
 
                 let color = 'bg-gray-600';
                 if (msg.mensaje_in) color = 'bg-green-700';
-                else if (msg.tipo === 'salida' && msg.autor === 'humano') color = 'bg-blue-600';
-                else if (msg.tipo === 'salida' && msg.autor === 'bot') color = 'bg-gray-600';
+                else if (msg.autor === 'humano') color = 'bg-blue-600';
+                else if (msg.autor === 'bot') color = 'bg-gray-500';
 
                 const alignment = msg.mensaje_in ? 'self-start' : 'self-end ml-auto';
 
