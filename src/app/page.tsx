@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -111,14 +112,14 @@ export default function CRMApp() {
           <img src={config.logo_url} alt="Logo" className="h-12 w-12 mr-4 rounded-full object-cover" />
         )}
         <div>
-        <h1 className="text-2xl font-bold">{config.titulo_crm || 'CRM'}</h1>
+          <h1 className="text-2xl font-bold">{config.titulo_crm || 'CRM'}</h1>
           <p className="text-sm text-gray-400">{config.slogan_crm || ''}</p>
         </div>
       </div>
 
       {selectedLead ? (
         <div className="grid grid-cols-12 gap-4">
-          {/* Panel de edición del Lead */}
+          {/* Panel Lead */}
           <div className="col-span-4 bg-gray-900 p-4 rounded-xl max-h-screen overflow-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">{formData.nombre || 'Lead'}</h3>
@@ -158,36 +159,32 @@ export default function CRMApp() {
             </Button>
           </div>
 
-          {/* Panel de conversación */}
+          {/* Panel Conversación */}
           <div className="col-span-8 flex flex-col bg-gray-900 p-4 rounded-xl max-h-screen">
             <h3 className="text-xl font-bold mb-4">💬 Conversación</h3>
             <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-              {conversacion.map((msg, i) => {
-                const isEntrada = msg.mensaje_in;
-                const isBot = msg.tipo === 'salida' && msg.autor === 'bot';
-                const isHumano = msg.tipo === 'salida' && msg.autor === 'humano';
-                const texto = msg.mensaje_in || msg.mensaje_out || 'Sin mensaje';
-                const hora = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const fecha = new Date(msg.timestamp_in || msg.timestamp_out).toLocaleDateString('es-AR');
-
-                const color = isEntrada
-                  ? 'bg-green-700'
-                  : isHumano
-                  ? 'bg-blue-600'
-                  : 'bg-gray-600';
-
-                const alignment = isEntrada ? 'self-start' : 'self-end ml-auto';
-
-                return (
-                  <div
-                    key={i}
-                    className={`p-3 rounded-lg w-fit max-w-[80%] ${color} ${alignment}`}
-                  >
-                    <p>{texto}</p>
-                    <p className="text-xs text-gray-300 mt-1 text-right">{hora} {fecha}</p>
-                  </div>
-                );
-              })}
+              {conversacion.map((msg, i) => (
+                <>
+                  {/* Mensaje Entrante */}
+                  {msg.mensaje_in && (
+                    <div key={`in-${i}`} className="p-3 rounded-lg w-fit max-w-[80%] bg-green-700 self-start">
+                      <p>{msg.mensaje_in}</p>
+                      <p className="text-xs text-gray-300 mt-1 text-right">
+                        {new Date(msg.timestamp_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(msg.timestamp_in).toLocaleDateString('es-AR')}
+                      </p>
+                    </div>
+                  )}
+                  {/* Mensaje Saliente */}
+                  {msg.mensaje_out && (
+                    <div key={`out-${i}`} className={`p-3 rounded-lg w-fit max-w-[80%] ${msg.autor === 'humano' ? 'bg-blue-600' : 'bg-gray-600'} self-end ml-auto`}>
+                      <p>{msg.mensaje_out}</p>
+                      <p className="text-xs text-gray-300 mt-1 text-right">
+                        {new Date(msg.timestamp_out || msg.timestamp_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(msg.timestamp_out || msg.timestamp_in).toLocaleDateString('es-AR')}
+                      </p>
+                    </div>
+                  )}
+                </>
+              ))}
               <div ref={chatEndRef} />
             </div>
             {formData.intervencion_humana && (
