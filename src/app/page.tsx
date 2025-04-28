@@ -45,8 +45,16 @@ export default function CRMApp() {
   }, [selectedLead]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const chatContainer = chatEndRef.current?.parentElement;
+    if (!chatContainer) return;
+  
+    const isNearBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < 200;
+    
+    if (isNearBottom) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [conversacion]);
+  
 
   const fetchConversacion = async (leadId: string) => {
     const { data } = await supabase
