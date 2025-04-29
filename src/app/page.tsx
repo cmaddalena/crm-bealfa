@@ -6,7 +6,6 @@ import { createClient } from '@supabase/supabase-js';
 import { Card } from './components/ui/card';
 import { Button } from './components/ui/button';
 
-// Conexión a Supabase
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -26,10 +25,10 @@ export default function CRMApp() {
     const fetchData = async () => {
       const { data: estadosData } = await supabase.from('estados_crm').select('nombre_estado');
       setEstados(estadosData?.map(e => e.nombre_estado) || []);
-      
+
       const { data: leadsData } = await supabase.from('leads').select('*');
       setLeads(leadsData || []);
-      
+
       const { data: configData } = await supabase.from('config').select('*').single();
       setConfig(configData || {});
     };
@@ -120,6 +119,31 @@ export default function CRMApp() {
     return 'bg-gray-600';
   };
 
+  const calcularDiasUltimoMensaje = (leadId: string) => {
+    const mensajes = conversacion.filter(c => c.lead_id === leadId);
+    if (mensajes.length === 0) return '';
+
+    const ultimo = mensajes[mensajes.length - 1];
+    const fecha = new Date(ultimo.timestamp_in || ultimo.timestamp_out);
+    const ahora = new Date();
+    const diffMs = ahora.getTime() - fecha.getTime();
+    const diffHoras = diffMs / (1000 * 60 * 60);
+
+    if (diffHoras < 24) {
+      return `${Math.floor(diffHoras)}h`;
+    } else {
+      const diffDias = Math.floor(diffHoras / 24);
+      return `${diffDias}d`;
+    }
+  };
+
+  const tieneMensajePendiente = (leadId: string) => {
+    const mensajes = conversacion.filter(c => c.lead_id === leadId);
+    if (mensajes.length === 0) return false;
+    const ultimo = mensajes[mensajes.length - 1];
+    return !!ultimo.mensaje_in && !ultimo.mensaje_out;
+  };
+
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: config.color_fondo || '#0f172a', color: config.color_secundario || 'white' }}>
       <div className="flex items-center justify-between p-4 shadow-md sticky top-0 z-50 bg-gray-900">
@@ -133,8 +157,9 @@ export default function CRMApp() {
           </div>
         </div>
       </div>
-
-      {/* El resto se adapta dinámicamente */}
+      <div className="flex-1 p-4 overflow-hidden">
+        {/* CONTINÚA ABAJO */}
+      </div>
     </div>
   );
 }
