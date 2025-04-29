@@ -47,8 +47,14 @@ export default function CRMApp() {
   }, [selectedLead]);
 
   useEffect(() => {
+  const container = chatEndRef.current?.parentElement;
+  if (!container) return;
+
+  const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+  if (isNearBottom) {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversacion]);
+  }
+}, [conversacion]);
 
   const fetchConversacion = async (leadId: string) => {
     const { data } = await supabase
@@ -123,30 +129,36 @@ export default function CRMApp() {
               <h3 className="text-xl font-bold">{formData.nombre || 'Lead'}</h3>
               <button onClick={() => setSelectedLead(null)} className="text-red-500 hover:text-red-400">❌</button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {Object.entries(formData)
-                .filter(([key]) => !camposExcluidos.includes(key))
-                .map(([key, value]) => (
-                  <div key={key} className="col-span-2">
-                    <label className="text-sm capitalize">{key}</label>
-                    {key === 'intervencion_humana' ? (
-                      <input
-                        type="checkbox"
-                        checked={value === true}
-                        onChange={(e) => handleChange(key, e.target.checked)}
-                        className="ml-2"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={String(value ?? '')}
-                        onChange={(e) => handleChange(key, e.target.value)}
-                        className="w-full p-2 rounded bg-gray-800 text-white"
-                      />
-                    )}
-                  </div>
-                ))}
-            </div>
+            
+            //editar lead
+
+            <div className="grid grid-cols-2 gap-4">
+            {Object.entries(formData)
+              .filter(([key]) => !camposExcluidos.includes(key))
+              .map(([key, value]) => (
+                <div key={key} className="flex flex-col">
+                  <label className="text-sm capitalize mb-1">{key}</label>
+                  {key === 'intervencion_humana' ? (
+                    <input
+                      type="checkbox"
+                      checked={value === true}
+                      onChange={(e) => handleChange(key, e.target.checked)}
+                      className="self-start"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={String(value ?? '')}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      className="p-2 rounded bg-gray-800 text-white"
+                    />
+                  )}
+                </div>
+              ))}
+          </div>
+
+
+
             <Button onClick={handleGuardar} className="w-full mt-4 bg-blue-600 rounded-full">
               Guardar
             </Button>
