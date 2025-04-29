@@ -112,7 +112,7 @@ export default function CRMApp() {
   return (
     <div className="min-h-screen bg-gray-950 text-white p-4">
       {/* Header */}
-      <div className="flex items-center mb-6">
+      <div className="flex items-center mb-6 sticky top-0 z-50 bg-gray-900 p-4 shadow-md">
         {config.logo_url && (
           <img src={config.logo_url} alt="Logo" className="h-12 w-12 mr-4 rounded-full object-cover" />
         )}
