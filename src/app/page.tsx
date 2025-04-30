@@ -46,15 +46,6 @@ export default function CRMApp() {
     }
   }, [selectedLead]);
 
-  useEffect(() => {
-  const container = chatEndRef.current?.parentElement;
-  if (!container) return;
-
-  const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-  if (isNearBottom) {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }
-}, [conversacion]);
 
   const fetchConversacion = async (leadId: string) => {
     const { data } = await supabase
@@ -74,8 +65,13 @@ export default function CRMApp() {
   const handleChange = (field: string, value: any) => {
     setFormData({ ...formData, [field]: value });
     if (field === 'intervencion_humana') {
-      supabase.from('leads').update({ [field]: value }).eq('id', formData.id);
-    }
+      setFormData((prev: any) => {
+        const updated = { ...prev, [field]: value };
+        supabase.from('leads').update({ [field]: value }).eq('id', prev.id);
+        return updated;
+      });
+      return;
+    }    
   };
 
   const handleGuardar = async () => {
@@ -86,6 +82,7 @@ export default function CRMApp() {
 
   const handleSendMessage = async () => {
     if (!nuevoMensaje.trim()) return;
+    console.log('Enviando mensaje:', nuevoMensaje); // <-- esto
 
     await supabase.from('conversaciones').insert({
       lead_id: formData.id,
@@ -130,7 +127,6 @@ export default function CRMApp() {
               <button onClick={() => setSelectedLead(null)} className="text-red-500 hover:text-red-400">❌</button>
             </div>
             
-            //editar lead
 
             <div className="grid grid-cols-2 gap-4">
             {Object.entries(formData)
