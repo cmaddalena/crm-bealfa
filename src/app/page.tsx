@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -38,16 +37,33 @@ export default function CRMApp() {
   }, []);
 
   useEffect(() => {
-    if (selectedLead) {
-      const interval = setInterval(() => {
-        fetchConversacion(selectedLead.id);
-      }, 1000);
-      return () => clearInterval(interval);
-    }
+    if (!selectedLead) return;
+  
+    const channel = supabase
+      .channel('realtime:conversaciones')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'conversaciones',
+          filter: `lead_id=eq.${selectedLead.id}`
+        },
+        (payload) => {
+          fetchConversacion(selectedLead.id);
+        }
+      )
+      .subscribe();
+  
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [selectedLead]);
+  
 
 
   const fetchConversacion = async (leadId: string) => {
+    console.log('🔁 fetchConversacion triggered for', leadId);
     const { data } = await supabase
       .from('conversaciones')
       .select('*')
@@ -62,17 +78,27 @@ export default function CRMApp() {
     fetchConversacion(lead.id);
   };
 
-  const handleChange = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
+  const handleChange = async (field: string, value: any) => {
+    const updatedFormData = { ...formData, [field]: value };
+    setFormData(updatedFormData);
+  
     if (field === 'intervencion_humana') {
-      setFormData((prev: any) => {
-        const updated = { ...prev, [field]: value };
-        supabase.from('leads').update({ [field]: value }).eq('id', prev.id);
-        return updated;
-      });
-      return;
-    }    
+      try {
+        const { error } = await supabase
+          .from('leads')
+          .update({ [field]: value })
+          .eq('id', updatedFormData.id);
+  
+        if (error) throw error;
+  
+        console.log('✅ Campo intervencion_humana actualizado');
+      } catch (err: any) {
+        console.error('❌ Error al actualizar intervención humana:', err.message || err);
+      }
+    }
   };
+  
+  
 
   const handleGuardar = async () => {
     await supabase.from('leads').update(formData).eq('id', formData.id);
