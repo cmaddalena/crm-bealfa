@@ -62,15 +62,21 @@ export default function CRMApp() {
   
 
 
-  const fetchConversacion = async (leadId: string) => {
-    console.log('🔁 fetchConversacion triggered for', leadId);
-    const { data } = await supabase
-      .from('conversaciones')
-      .select('*')
-      .eq('lead_id', leadId)
-      .order('timestamp_in', { ascending: true });
-    setConversacion(data || []);
-  };
+  // 1) Reemplaza tu fetchConversacion por esto:
+const fetchConversacion = async (leadId: string) => {
+  const { data, error } = await supabase
+    .from('conversaciones')
+    .select(`
+      *,
+      coalesce(timestamp_out, timestamp_in) AS fecha
+    `)
+    .eq('lead_id', leadId)
+    .order('fecha', { ascending: true });
+
+  if (error) console.error('Error al cargar conversación:', error);
+  else setConversacion(data || []);
+};
+
 
   const handleSelectLead = (lead: any) => {
     setSelectedLead(lead);
@@ -107,21 +113,35 @@ export default function CRMApp() {
   };
 
   const handleSendMessage = async () => {
-    if (!nuevoMensaje.trim()) return;
-    console.log('Enviando mensaje:', nuevoMensaje); // <-- esto
+  if (!nuevoMensaje.trim() || !formData.id) return;
 
-    await supabase.from('conversaciones').insert({
-      lead_id: formData.id,
+  // Inserta y pide de vuelta el timestamp unificado “fecha”
+  const { data, error } = await supabase
+    .from('conversaciones')
+    .insert({
+      lead_id:   formData.id,
       mensaje_out: nuevoMensaje,
-      tipo: 'salida',
-      autor: 'humano',
-      envio: 'enviado',
+      tipo:      'salida',
+      autor:     'humano',
+      envio:     'enviado',
       timestamp_out: new Date().toISOString(),
-    });
+    })
+    .select(`
+      *,
+      coalesce(timestamp_out, timestamp_in) AS fecha
+    `)
+    .single();
 
-    fetchConversacion(formData.id);
-    setNuevoMensaje('');
-  };
+  if (error) {
+    console.error('Error enviando mensaje:', error);
+    return;
+  }
+
+  // Añade el mensaje al array ya ordenado
+  setConversacion(prev => [...prev, data]);
+  setNuevoMensaje('');
+};
+
 
   const camposExcluidos = ['id', 'fecha_creacion', 'usuario_update', 'fecha_update'];
 
