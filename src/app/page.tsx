@@ -62,19 +62,19 @@ export default function CRMApp() {
   
 
 
-  // 1) Reemplaza tu fetchConversacion por esto:
+// 1) Usar la vista ordenada en lugar de la tabla base
 const fetchConversacion = async (leadId: string) => {
   const { data, error } = await supabase
-    .from('conversaciones')
-    .select(`
-      *,
-      coalesce(timestamp_out, timestamp_in) AS fecha
-    `)
+    .from('conversaciones_ordenadas')   // <— la vista que creaste
+    .select('*')                         // ya incluye todos los campos + fecha
     .eq('lead_id', leadId)
     .order('fecha', { ascending: true });
 
-  if (error) console.error('Error al cargar conversación:', error);
-  else setConversacion(data || []);
+  if (error) {
+    console.error('Error al cargar conversación:', error);
+  } else {
+    setConversacion(data || []);
+  }
 };
 
 
