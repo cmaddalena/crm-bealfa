@@ -116,31 +116,24 @@ const fetchConversacion = async (leadId: string) => {
   if (!nuevoMensaje.trim() || !formData.id) return;
 
   // Inserta y pide de vuelta el timestamp unificado “fecha”
-  const { data, error } = await supabase
-    .from('conversaciones')
-    .insert({
-      lead_id:   formData.id,
-      mensaje_out: nuevoMensaje,
-      tipo:      'salida',
-      autor:     'humano',
-      envio:     'enviado',
-      timestamp_out: new Date().toISOString(),
-    })
-    .select(`
-      *,
-      coalesce(timestamp_out, timestamp_in) AS fecha
-    `)
-    .single();
+ const { error } = await supabase
+  .from('conversaciones')
+  .insert({
+    lead_id: formData.id,
+    mensaje_out: nuevoMensaje,
+    tipo: 'salida',
+    autor: 'humano',
+    envio: 'enviado',
+    timestamp_out: new Date().toISOString(),
+  });
 
-  if (error) {
-    console.error('Error enviando mensaje:', error);
-    return;
-  }
-
-  // Añade el mensaje al array ya ordenado
-  setConversacion(prev => [...prev, data]);
+if (error) {
+  console.error('Error enviando mensaje:', error);
+} else {
+  // Volvemos a traer toda la conversación ya ordenada por la vista
+  fetchConversacion(formData.id);
   setNuevoMensaje('');
-};
+}};
 
 
   const camposExcluidos = ['id', 'fecha_creacion', 'usuario_update', 'fecha_update'];
